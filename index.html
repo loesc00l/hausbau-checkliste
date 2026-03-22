@@ -142,7 +142,7 @@ header h1{font-size:1.25rem;font-weight:700}
 <script>
 // ── Konfiguration ────────────────────────────────────────────────────────
 const SB_URL  = atob("aHR0cHM6Ly9raW1vZ3N3Y29udXhpanN6cXBxei5zdXBhYmFzZS5jbw==");
-const SB_KEY  = atob("c2Jfc2VjcmV0X1BxeDhOcEM2U0pDdjZvZ0tSc0RWc2dfV25YVkZfY3Y=");
+const SB_KEY  = atob("ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW10cGJXOW5jM2RqYjI1MWVHbHFjM3B4Y0hGNklpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzTnpReE9UYzJNalVzSW1WNGNDSTZNakE0T1RjM016WXlOWDAuaGtrUm41T05LamM3WjFRbEp3UmtjVktjREp1RTNJQ2ZDVjZQUTRpQk5OVQ==");
 const USERS   = [{"id": "lucian", "name": "Lucian", "initials": "L", "color": "#2c5282"}, {"id": "simona", "name": "Simona", "initials": "S", "color": "#744210"}, {"id": "justin", "name": "Justin", "initials": "J", "color": "#276749"}];
 const META    = {"HH - Haupthaus": {"icon": "🏡", "color": "#2c5282"}, "ELW - Einliegerwohnung": {"icon": "🏘️", "color": "#375623"}, "Drausen - Aussenbereich": {"icon": "🌳", "color": "#7b3f00"}};
 
@@ -199,12 +199,23 @@ function flash() {
 }
 
 // ── Daten laden ───────────────────────────────────────────────────────────
+function showError(msg) {
+  document.getElementById('content').innerHTML =
+    `<div style="padding:40px;text-align:center;color:#c53030">
+      <div style="font-size:2rem;margin-bottom:12px">⚠️</div>
+      <div style="font-weight:600;margin-bottom:8px">Verbindungsfehler</div>
+      <div style="font-size:.85rem;color:#718096;max-width:480px;margin:auto">${msg}</div>
+    </div>`;
+}
 async function loadAll() {
-  const [{data: tr}, {data: cr}, {data: ctr}] = await Promise.all([
+  try {
+  const [r1, r2, r3] = await Promise.all([
     sb.from('hausbau_tasks').select('section,floor,room,task_text,sort_order').order('sort_order'),
     sb.from('hausbau_checks').select('task_key,checked,checked_by'),
     sb.from('hausbau_custom_tasks').select('section,floor,room,task_text,sort_order').order('sort_order'),
   ]);
+  if (r1.error) { showError('hausbau_tasks: ' + r1.error.message); return; }
+  const tr = r1.data, cr = r2.data || [], ctr = r3.data || [];
 
   // Tasks aufbauen
   tasks = {};
@@ -212,6 +223,10 @@ async function loadAll() {
     (tasks[r.section] ??= {})[r.floor] ??= {};
     (tasks[r.section][r.floor][r.room] ??= []).push(r.task_text);
   });
+  if ((tr || []).length === 0) {
+    showError('Die Tabelle hausbau_tasks ist leer. Bitte python watch_excel.py --setup auf deinem PC ausführen, um die Aufgaben aus Excel hochzuladen.');
+    return;
+  }
 
   // Checks
   checks = {};
@@ -225,6 +240,9 @@ async function loadAll() {
   });
 
   rebuildUI();
+  } catch(e) {
+    showError('Unerwarteter Fehler: ' + e.message + '<br><br>Bitte prüfe: Supabase URL und Anon-Key in config.json, RLS-Policies in Supabase.');
+  }
 }
 
 // ── Echtzeit ──────────────────────────────────────────────────────────────
