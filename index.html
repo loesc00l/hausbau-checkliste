@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hausbau Checklisten</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#2d3748;min-height:100vh}
+header{background:#2c5282;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;
+  box-shadow:0 2px 8px rgba(0,0,0,.18);position:sticky;top:0;z-index:100}
+header h1{font-size:1.25rem;font-weight:700}
+.hdr-sub{font-size:.78rem;opacity:.7;margin-top:2px}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+.prog-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.prog-wrap span{font-size:.78rem;opacity:.85}
+.prog-bar{width:160px;background:rgba(255,255,255,.25);border-radius:10px;height:7px;overflow:hidden}
+.prog-fill{height:100%;background:#68d391;border-radius:10px;transition:width .4s}
+.user-badge{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.15);
+  border-radius:20px;padding:5px 12px;cursor:pointer;border:1px solid rgba(255,255,255,.3)}
+.avatar{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:.72rem;color:#fff;flex-shrink:0}
+.uname{font-size:.8rem;font-weight:600}
+.dot{width:7px;height:7px;border-radius:50%;background:#68d391;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sidebar{position:fixed;left:0;top:56px;bottom:0;width:220px;background:#fff;
+  border-right:1px solid #e2e8f0;overflow-y:auto;padding:10px 0;z-index:50}
+.sb-sec{padding:5px 14px 2px;font-size:.66rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:1px;color:#718096;margin-top:6px}
+.sb-link{display:flex;align-items:center;gap:7px;padding:6px 14px 6px 16px;font-size:.78rem;
+  color:#4a5568;text-decoration:none;border-left:3px solid transparent;transition:all .15s}
+.sb-link:hover{background:#edf2f7}
+.mp{margin-left:auto;font-size:.65rem;color:#a0aec0}
+.main{margin-left:220px;padding:22px 26px;max-width:1080px}
+.sec-hdr{display:flex;align-items:center;gap:10px;margin:26px 0 12px;
+  padding-bottom:8px;border-bottom:2px solid #e2e8f0}
+.sec-hdr:first-of-type{margin-top:0}
+.sec-ico{font-size:1.35rem}
+.sec-ttl{font-size:1.15rem;font-weight:700;color:#1a365d}
+.floor-lbl{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+  color:#718096;margin:16px 0 6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.card{background:#fff;border-radius:9px;border:1px solid #e2e8f0;
+  overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px;background:#f7fafc;border-bottom:1px solid #e2e8f0;cursor:pointer;user-select:none}
+.card-ttl{font-size:.85rem;font-weight:700;color:#2d3748}
+.card-stats{display:flex;align-items:center;gap:6px}
+.mini-bar{width:50px;height:5px;background:#e2e8f0;border-radius:5px;overflow:hidden}
+.mini-fill{height:100%;background:#68d391;border-radius:5px;transition:width .3s}
+.mini-pct{font-size:.66rem;color:#718096;min-width:26px;text-align:right}
+.arr{font-size:.7rem;color:#a0aec0;transition:transform .2s}
+.card.coll .arr{transform:rotate(-90deg)}
+.tlist{padding:4px 0}
+.tlist.hidden{display:none}
+.titem{display:flex;align-items:flex-start;gap:8px;padding:4px 12px;transition:background .1s}
+.titem:hover{background:#f7fafc}
+.titem input{margin-top:2px;width:14px;height:14px;cursor:pointer;accent-color:#3182ce;flex-shrink:0}
+.tlbl{font-size:.78rem;line-height:1.4;color:#4a5568;flex:1}
+.titem.done .tlbl{color:#a0aec0;text-decoration:line-through}
+.twho{width:15px;height:15px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:.5rem;font-weight:700;color:#fff;flex-shrink:0}
+.add-row{display:flex;align-items:center;gap:6px;padding:5px 12px 8px;border-top:1px solid #f0f4f8}
+.add-inp{flex:1;border:none;border-bottom:1px dashed #cbd5e0;font-size:.76rem;
+  color:#4a5568;background:transparent;outline:none;padding:2px 0}
+.add-inp::placeholder{color:#cbd5e0}
+.add-btn{background:none;border:none;color:#3182ce;cursor:pointer;font-size:.95rem;padding:1px 4px;border-radius:4px}
+.toolbar{display:flex;gap:9px;margin-bottom:18px;align-items:center;flex-wrap:wrap}
+.srch{flex:1;min-width:180px;padding:7px 12px;border:1px solid #e2e8f0;
+  border-radius:8px;font-size:.82rem;outline:none;background:#fff}
+.srch:focus{border-color:#3182ce}
+.flt{padding:6px 13px;border:1px solid #e2e8f0;border-radius:8px;font-size:.78rem;cursor:pointer;background:#fff}
+.flt.on{background:#2c5282;color:#fff;border-color:#2c5282}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);
+  display:flex;align-items:center;justify-content:center;z-index:500}
+.modal-bg.hidden{display:none}
+.modal{background:#fff;border-radius:14px;padding:28px;width:320px;
+  box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal h2{font-size:1.1rem;margin-bottom:5px;color:#1a365d}
+.modal p{font-size:.8rem;color:#718096;margin-bottom:20px;line-height:1.5}
+.uopt{display:flex;align-items:center;gap:11px;padding:11px 14px;
+  border:2px solid #e2e8f0;border-radius:10px;cursor:pointer;margin-bottom:8px;transition:all .15s}
+.uopt:hover{border-color:#3182ce;background:#ebf8ff}
+.uopt .oa{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-weight:700;font-size:.95rem;color:#fff}
+.uopt .on{font-weight:600;font-size:.92rem}
+.sync-badge{position:fixed;bottom:14px;right:14px;background:#2c5282;color:#fff;
+  padding:7px 13px;border-radius:18px;font-size:.72rem;opacity:0;
+  transition:opacity .3s;pointer-events:none;z-index:200}
+.sync-badge.show{opacity:1}
+.loading{padding:40px;text-align:center;color:#718096;font-size:.9rem}
+@media(max-width:680px){
+  .sidebar{display:none}
+  .main{margin-left:0;padding:12px}
+  .grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="modal-bg" id="userModal">
+  <div class="modal">
+    <h2>👋 Wer bist du?</h2>
+    <p>Wähle deinen Namen – deine Häkchen sind dann für alle sichtbar.</p>
+    <div id="userOpts"></div>
+  </div>
+</div>
+
+<div class="sync-badge" id="syncBadge">⟳ Synchronisiere…</div>
+
+<header>
+  <div>
+    <h1>🏠 Hausbau Checklisten</h1>
+    <div class="hdr-sub">Echtzeit-Sync · loesc00l.github.io/hausbau-checkliste</div>
+  </div>
+  <div class="hdr-right">
+    <div class="prog-wrap">
+      <span id="progTxt">Lade…</span>
+      <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+    </div>
+    <div class="user-badge" onclick="document.getElementById('userModal').classList.remove('hidden')" id="userBadge">
+      <div class="avatar" id="hdrAvatar" style="background:#718096">?</div>
+      <span class="uname" id="hdrName">Auswählen</span>
+      <div class="dot"></div>
+    </div>
+  </div>
+</header>
+
+<nav class="sidebar" id="sb"></nav>
+
+<main class="main" id="main">
+  <div class="toolbar">
+    <input class="srch" type="text" placeholder="🔍 Suchen…" oninput="onSearch(this.value)">
+    <button class="flt on"  onclick="setFlt('all',this)">Alle</button>
+    <button class="flt"     onclick="setFlt('open',this)">Offen</button>
+    <button class="flt"     onclick="setFlt('done',this)">Erledigt</button>
+  </div>
+  <div id="content"><div class="loading">⏳ Aufgaben werden geladen…</div></div>
+</main>
+
+<script>
+// ── Konfiguration ────────────────────────────────────────────────────────
+const SB_URL  = atob("aHR0cHM6Ly9raW1vZ3N3Y29udXhpanN6cXBxei5zdXBhYmFzZS5jbw==");
+const SB_KEY  = atob("c2Jfc2VjcmV0X1BxeDhOcEM2U0pDdjZvZ0tSc0RWc2dfV25YVkZfY3Y=");
+const USERS   = [{"id": "lucian", "name": "Lucian", "initials": "L", "color": "#2c5282"}, {"id": "cynthia", "name": "Cynthia", "initials": "C", "color": "#744210"}];
+const META    = {"HH - Haupthaus": {"icon": "🏡", "color": "#2c5282"}, "ELW - Einliegerwohnung": {"icon": "🏘️", "color": "#375623"}, "Drausen - Aussenbereich": {"icon": "🌳", "color": "#7b3f00"}};
+
+// ── Supabase ─────────────────────────────────────────────────────────────
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+// ── State ─────────────────────────────────────────────────────────────────
+let tasks   = {};  // section → floor → room → [task_text, ...]
+let checks  = {};  // task_key → {checked, by}
+let custom  = {};  // section||floor||room → [task_text, ...]
+let me      = null;
+let flt     = 'all';
+let srch    = '';
+
+// ── Keys ──────────────────────────────────────────────────────────────────
+const tkey = (s,f,r,t) => [s,f,r,t].join('||');
+const ckey = (s,f,r)   => 'cst:' + [s,f,r].join('||');
+const slug = str => str.replace(/[^a-zA-Z0-9]/g,'_').slice(0,38);
+
+// ── Nutzerwahl ────────────────────────────────────────────────────────────
+function initModal() {
+  const c = document.getElementById('userOpts');
+  c.innerHTML = '';
+  USERS.forEach(u => {
+    const d = document.createElement('div');
+    d.className = 'uopt';
+    d.innerHTML = `<div class="oa" style="background:${u.color}">${u.initials}</div>
+                   <span class="on">${u.name}</span>`;
+    d.onclick = () => pickUser(u);
+    c.appendChild(d);
+  });
+}
+function pickUser(u) {
+  me = u;
+  localStorage.setItem('hb_user', u.id);
+  document.getElementById('hdrAvatar').textContent = u.initials;
+  document.getElementById('hdrAvatar').style.background = u.color;
+  document.getElementById('hdrName').textContent = u.name;
+  document.getElementById('userModal').classList.add('hidden');
+}
+function restoreUser() {
+  const u = USERS.find(x => x.id === localStorage.getItem('hb_user'));
+  if (u) pickUser(u); else document.getElementById('userModal').classList.remove('hidden');
+}
+function userById(id) { return USERS.find(u => u.id === id); }
+
+// ── Sync-Flash ────────────────────────────────────────────────────────────
+let syncTimer;
+function flash() {
+  const el = document.getElementById('syncBadge');
+  el.classList.add('show');
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => el.classList.remove('show'), 1600);
+}
+
+// ── Daten laden ───────────────────────────────────────────────────────────
+async function loadAll() {
+  const [{data: tr}, {data: cr}, {data: ctr}] = await Promise.all([
+    sb.from('hausbau_tasks').select('section,floor,room,task_text,sort_order').order('sort_order'),
+    sb.from('hausbau_checks').select('task_key,checked,checked_by'),
+    sb.from('hausbau_custom_tasks').select('section,floor,room,task_text,sort_order').order('sort_order'),
+  ]);
+
+  // Tasks aufbauen
+  tasks = {};
+  (tr || []).forEach(r => {
+    (tasks[r.section] ??= {})[r.floor] ??= {};
+    (tasks[r.section][r.floor][r.room] ??= []).push(r.task_text);
+  });
+
+  // Checks
+  checks = {};
+  (cr || []).forEach(r => { checks[r.task_key] = {checked: r.checked, by: r.checked_by}; });
+
+  // Custom tasks
+  custom = {};
+  (ctr || []).forEach(r => {
+    const k = ckey(r.section, r.floor, r.room);
+    (custom[k] ??= []).push(r.task_text);
+  });
+
+  rebuildUI();
+}
+
+// ── Echtzeit ──────────────────────────────────────────────────────────────
+function subscribe() {
+  sb.channel('all_changes')
+    .on('postgres_changes', {event:'*', schema:'public', table:'hausbau_checks'}, p => {
+      const row = p.new || p.old;
+      if (!row) return;
+      if (p.eventType === 'DELETE') delete checks[row.task_key];
+      else checks[row.task_key] = {checked: row.checked, by: row.checked_by};
+      flash(); rebuildUI();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'hausbau_tasks'}, async () => {
+      // Aufgabenliste hat sich geändert (neuer Excel-Sync) → neu laden
+      flash(); await loadAll();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'hausbau_custom_tasks'}, p => {
+      const row = p.new || p.old;
+      if (!row) return;
+      const k = ckey(row.section, row.floor, row.room);
+      if (p.eventType === 'DELETE') {
+        custom[k] = (custom[k] || []).filter(t => t !== row.task_text);
+      } else {
+        custom[k] = [...new Set([...(custom[k] || []), row.task_text])];
+      }
+      flash(); rebuildUI();
+    })
+    .subscribe();
+}
+
+// ── Aufgabe abhaken ───────────────────────────────────────────────────────
+async function toggle(s, f, r, t) {
+  if (!me) { document.getElementById('userModal').classList.remove('hidden'); return; }
+  const k    = tkey(s,f,r,t);
+  const prev = checks[k]?.checked || false;
+  const next = !prev;
+  checks[k]  = {checked: next, by: next ? me.id : ''};
+  flash(); rebuildUI();
+  await sb.from('hausbau_checks').upsert(
+    {task_key:k, checked:next, checked_by: next ? me.id : '', updated_at: new Date().toISOString()},
+    {onConflict:'task_key'}
+  );
+}
+
+// ── Eigene Aufgabe hinzufügen ─────────────────────────────────────────────
+async function addCustom(cid, s, f, r) {
+  const inp = document.getElementById(cid + '_i');
+  const val = inp.value.trim();
+  if (!val) return;
+  const k   = ckey(s, f, r);
+  if ((custom[k] || []).includes(val)) { inp.value=''; return; }
+  (custom[k] ??= []).push(val);
+  inp.value = '';
+  rebuildUI();
+  await sb.from('hausbau_custom_tasks').upsert(
+    {section:s, floor:f, room:r, task_text:val, added_by: me?.id||'',
+      sort_order: (custom[k]||[]).length, created_at: new Date().toISOString()},
+    {onConflict:'section,floor,room,task_text'}
+  );
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────
+function roomStats(s, f, r, base) {
+  const all = [...base, ...(custom[ckey(s,f,r)] || [])];
+  return all.reduce((acc, t) => {
+    acc.total++;
+    if (checks[tkey(s,f,r,t)]?.checked) acc.done++;
+    return acc;
+  }, {total:0, done:0});
+}
+
+// ── Aufgaben-Zeile ────────────────────────────────────────────────────────
+function trow(s, f, r, t) {
+  if (srch && !t.toLowerCase().includes(srch)) return '';
+  const k   = tkey(s,f,r,t);
+  const chk = checks[k]?.checked || false;
+  if (flt === 'done' && !chk) return '';
+  if (flt === 'open' &&  chk) return '';
+  const u   = userById(checks[k]?.by || '');
+  const who = chk && u ? `<div class="twho" style="background:${u.color}" title="${u.name}">${u.initials}</div>` : '';
+  const esc = JSON.stringify;
+  return `<div class="titem${chk?' done':''}">
+    <input type="checkbox" ${chk?'checked':''} onchange="toggle(${esc(s)},${esc(f)},${esc(r)},${esc(t)})">
+    <label class="tlbl" onclick="this.previousElementSibling.click()">${t}</label>
+    ${who}
+  </div>`;
+}
+
+// ── Raumkarte ─────────────────────────────────────────────────────────────
+function roomCard(s, f, r, base) {
+  const cid  = 'c_' + slug(s+f+r);
+  const all  = [...base, ...(custom[ckey(s,f,r)] || [])];
+  const st   = roomStats(s, f, r, base);
+  const pct  = st.total ? Math.round(st.done/st.total*100) : 0;
+  const coll = localStorage.getItem('cl:'+cid)==='1' ? 'coll' : '';
+  const rows = all.map(t => trow(s,f,r,t)).join('');
+  const esc  = JSON.stringify;
+  return `<div class="card ${coll}" id="${cid}">
+    <div class="card-hdr" onclick="toggleCard('${cid}')">
+      <span class="card-ttl">${r}</span>
+      <div class="card-stats" id="${cid}_st">
+        <div class="mini-bar"><div class="mini-fill" style="width:${pct}%"></div></div>
+        <span class="mini-pct">${st.done}/${st.total}</span>
+        <span class="arr">▾</span>
+      </div>
+    </div>
+    <div class="tlist${coll?' hidden':''}" id="${cid}_l">
+      ${rows || '<div style="padding:6px 12px;font-size:.75rem;color:#a0aec0">Keine Aufgaben</div>'}
+      <div class="add-row">
+        <input class="add-inp" type="text" placeholder="+ Aufgabe hinzufügen…"
+          id="${cid}_i" onkeydown="if(event.key==='Enter')addCustom('${cid}',${esc(s)},${esc(f)},${esc(r)})">
+        <button class="add-btn" onclick="addCustom('${cid}',${esc(s)},${esc(f)},${esc(r)})">＋</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleCard(cid) {
+  const c = document.getElementById(cid), l = document.getElementById(cid+'_l');
+  c.classList.toggle('coll'); l.classList.toggle('hidden');
+  localStorage.setItem('cl:'+cid, c.classList.contains('coll')?'1':'0');
+}
+
+// ── Gesamtfortschritt ─────────────────────────────────────────────────────
+function globalProgress() {
+  let tot=0, dn=0;
+  for (const [s,fs] of Object.entries(tasks))
+    for (const [f,rs] of Object.entries(fs))
+      for (const [r,ts] of Object.entries(rs)) {
+        const st = roomStats(s,f,r,ts); tot+=st.total; dn+=st.done;
+      }
+  const p = tot ? Math.round(dn/tot*100) : 0;
+  document.getElementById('progTxt').textContent = dn+' / '+tot+' erledigt ('+p+'%)';
+  document.getElementById('progFill').style.width = p+'%';
+}
+
+// ── Filter / Suche ────────────────────────────────────────────────────────
+function onSearch(v) { srch = v.toLowerCase(); rebuildUI(); }
+function setFlt(f, btn) {
+  flt = f;
+  document.querySelectorAll('.flt').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  rebuildUI();
+}
+
+// ── UI aufbauen ───────────────────────────────────────────────────────────
+function rebuildUI() {
+  if (!Object.keys(tasks).length) return;
+  let html='', sbHtml='';
+
+  for (const [s, floors] of Object.entries(tasks)) {
+    const m = META[s] || {icon:'🏠', color:'#2c5282'};
+    html += `<div class="sec-hdr" id="sec_${slug(s)}">
+      <span class="sec-ico">${m.icon}</span>
+      <span class="sec-ttl">${s}</span></div>`;
+    sbHtml += `<div class="sb-sec">${m.icon} ${s.split('-')[0].trim()}</div>`;
+
+    for (const [f, rooms] of Object.entries(floors)) {
+      const fid = slug(s+f);
+      html += `<div class="floor-lbl" id="fl_${fid}">${f}</div><div class="grid">`;
+      let ft=0, fd=0;
+      for (const [r, ts] of Object.entries(rooms)) {
+        html += roomCard(s,f,r,ts);
+        const st = roomStats(s,f,r,ts); ft+=st.total; fd+=st.done;
+      }
+      html += '</div>';
+      sbHtml += `<a class="sb-link" href="#fl_${fid}">
+        <span>${f}</span><span class="mp">${fd}/${ft}</span></a>`;
+    }
+  }
+  document.getElementById('content').innerHTML = html;
+  document.getElementById('sb').innerHTML = sbHtml;
+  globalProgress();
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────
+initModal();
+restoreUser();
+loadAll().then(subscribe);
+</script>
+</body>
+</html>
