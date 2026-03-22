@@ -592,7 +592,7 @@ function trow(s, f, r, t) {
     : `<div class="assign-badge empty" title="Zuweisen"
          onclick="showAssignMenu(event,${esc(s)},${esc(f)},${esc(r)},${esc(t)})">＋</div>`;
   const det    = details[k] || {};
-  const stCls  = (det.status||'Offen').replace(/\s+/g,'');
+  const stCls  = (det.status||'Offen').replace(/ /g,'');
   const stChip = det.status && det.status!=='Offen'
     ? `<span class="status-chip status-${stCls}">${det.status}</span>` : '';
   // Due date chip
