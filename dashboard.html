@@ -100,6 +100,18 @@ main{padding:24px 28px;max-width:1400px;margin:0 auto}
 .act-meta{font-size:.68rem;color:var(--muted);margin-top:2px}
 .act-time{font-size:.68rem;color:var(--muted);flex-shrink:0}
 .loading-msg{padding:60px;text-align:center;color:var(--muted)}
+.filter-bar{padding:10px 28px;background:#162032;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.filter-tab{padding:6px 15px;border:1px solid var(--border);border-radius:20px;
+  font-size:.76rem;cursor:pointer;color:var(--muted);background:transparent;
+  transition:all .15s;white-space:nowrap}
+.filter-tab:hover{border-color:var(--accent);color:#93c5fd}
+.filter-tab.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.search-inp{flex:1;min-width:180px;max-width:340px;padding:6px 14px;
+  background:#0f172a;border:1px solid var(--border);border-radius:20px;
+  color:var(--txt);font-size:.76rem;outline:none;transition:border-color .15s;margin-left:auto}
+.search-inp:focus{border-color:var(--accent)}
+.filter-count{font-size:.7rem;color:var(--muted);white-space:nowrap}
 .pw-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);
   display:flex;align-items:center;justify-content:center;z-index:999}
 .pw-modal.hidden{display:none}
@@ -145,6 +157,15 @@ main{padding:24px 28px;max-width:1400px;margin:0 auto}
   </div>
 </header>
 
+<div class="filter-bar">
+  <button class="filter-tab active" onclick="setSection('all',this)">🌐 Alle</button>
+  <button class="filter-tab" onclick="setSection('HH - Haupthaus',this)">🏡 Haupthaus</button>
+  <button class="filter-tab" onclick="setSection('ELW - Einliegerwohnung',this)">🏘️ Einliegerwohnung</button>
+  <button class="filter-tab" onclick="setSection('Drausen - Aussenbereich',this)">🌳 Außenbereich</button>
+  <span class="filter-count" id="filterCount"></span>
+  <input class="search-inp" type="text" placeholder="🔍 Raum, Aufgabe, Etage…" oninput="onDashSearch(this.value)">
+</div>
+
 <main>
   <div id="root"><div class="loading-msg">⏳ Dashboard wird geladen…</div></div>
 </main>
@@ -187,6 +208,11 @@ function checkAuth() {
   }
 }
 
+// ── Globaler State ────────────────────────────────────────────────────────
+let _allTasks = [], _allChecks = [];
+let _secFlt   = 'all';
+let _srch     = '';
+
 // ── Daten laden ───────────────────────────────────────────────────────────
 async function loadDashboard() {
   try {
@@ -196,16 +222,57 @@ async function loadDashboard() {
       sb.from('hausbau_custom_tasks').select('section,floor,room,task_text'),
     ]);
     if (r1.error) { showErr(r1.error.message); return; }
-    const tasks   = r1.data || [];
-    const checks  = r2.data || [];
-    const customs = r3.data || [];
-    const allTasks = [...tasks, ...customs];
-    render(allTasks, checks);
+    _allTasks  = [...(r1.data||[]), ...(r3.data||[])];
+    _allChecks = r2.data || [];
+    renderDashboard();
   } catch(e) { showErr(e.message); }
 }
 function showErr(msg) {
   document.getElementById('root').innerHTML =
     `<div style="padding:60px;text-align:center;color:#ef4444">⚠️ ${msg}</div>`;
+}
+
+// ── Filter & Suche ─────────────────────────────────────────────────────────
+function setSection(sec, btn) {
+  _secFlt = sec;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderDashboard();
+}
+function onDashSearch(val) {
+  _srch = val.toLowerCase().trim();
+  renderDashboard();
+}
+function renderDashboard() {
+  const tkey = (s,f,r,t) => [s,f,r,t].join('||');
+  let tasks  = _allTasks;
+  let checks = _allChecks;
+
+  // Bereichs-Filter
+  if (_secFlt !== 'all') {
+    tasks = tasks.filter(t => t.section === _secFlt);
+    const keys = new Set(tasks.map(t => tkey(t.section,t.floor,t.room,t.task_text)));
+    checks = checks.filter(c => keys.has(c.task_key));
+  }
+
+  // Suche (Aufgabe, Raum, Etage)
+  if (_srch) {
+    tasks = tasks.filter(t =>
+      t.task_text.toLowerCase().includes(_srch) ||
+      (t.room  ||'').toLowerCase().includes(_srch) ||
+      (t.floor ||'').toLowerCase().includes(_srch) ||
+      (t.section||'').toLowerCase().includes(_srch)
+    );
+    const keys = new Set(tasks.map(t => tkey(t.section,t.floor,t.room,t.task_text)));
+    checks = checks.filter(c => keys.has(c.task_key));
+  }
+
+  // Zähler anzeigen
+  const cnt = document.getElementById('filterCount');
+  if (cnt) cnt.textContent = (_secFlt!=='all'||_srch)
+    ? `${tasks.length} von ${_allTasks.length} Aufgaben`  : '';
+
+  render(tasks, checks);
 }
 
 // ── Render ─────────────────────────────────────────────────────────────────
@@ -218,7 +285,7 @@ function render(tasks, checks) {
   const chkMap = {};
   checks.forEach(c => { chkMap[c.task_key] = c; });
 
-  const tkey = (s,f,r,t) => [s,f,r,t].join('||');
+  const tkey = (s,f,r,t) => [s,f,r,t].join('||');  // lokal für render()
 
   // Total stats
   const total = tasks.length;
