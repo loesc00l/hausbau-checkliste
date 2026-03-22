@@ -126,6 +126,48 @@ main{padding:24px 28px;max-width:1400px;margin:0 auto}
   border-radius:8px;font-size:.9rem;cursor:pointer;font-weight:600}
 .pw-btn:hover{background:#2a4a7f}
 .pw-err{color:#ef4444;font-size:.75rem;margin-bottom:10px;display:none}
+/* ── Aufgaben-Übersicht ───────────────────────────────────────────────── */
+.tasks-section{margin-top:16px}
+.sec-block{background:var(--card);border:1px solid var(--border);border-radius:12px;
+  margin-bottom:14px;overflow:hidden}
+.sec-block-hdr{display:flex;align-items:center;gap:10px;padding:12px 18px;
+  background:var(--card2);cursor:pointer;user-select:none;
+  border-bottom:1px solid var(--border)}
+.sec-block-ico{font-size:1.1rem}
+.sec-block-name{font-size:.88rem;font-weight:700;flex:1}
+.sec-block-prog{display:flex;align-items:center;gap:8px}
+.sec-prog-bar{width:80px;background:var(--border);border-radius:4px;height:6px;overflow:hidden}
+.sec-prog-fill{height:100%;border-radius:4px;background:var(--green);transition:width .4s}
+.sec-prog-txt{font-size:.7rem;color:var(--muted);min-width:42px;text-align:right}
+.sec-arr{font-size:.7rem;color:var(--muted);transition:transform .2s;margin-left:4px}
+.sec-block.collapsed .sec-arr{transform:rotate(-90deg)}
+.floor-group{padding:0 18px 6px}
+.floor-lbl{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+  color:var(--muted);padding:10px 0 4px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.task-row{display:flex;align-items:center;gap:8px;padding:5px 0;
+  border-bottom:1px solid rgba(51,65,85,.4);}
+.task-row:last-child{border-bottom:none}
+.task-chk{width:14px;height:14px;border-radius:3px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:.6rem}
+.task-chk.done{background:#22c55e;color:#fff}
+.task-chk.open{background:var(--border);color:transparent}
+.task-name{flex:1;font-size:.76rem;line-height:1.35}
+.task-name.done{color:var(--muted);text-decoration:line-through}
+.task-room{font-size:.65rem;color:var(--muted);flex-shrink:0;max-width:120px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task-prio{font-size:.6rem;padding:1px 6px;border-radius:8px;flex-shrink:0;font-weight:700}
+.task-prio.hoch{background:rgba(239,68,68,.15);color:#ef4444}
+.task-prio.mittel{background:rgba(245,158,11,.15);color:#f59e0b}
+.task-prio.niedrig{background:rgba(34,197,94,.15);color:#22c55e}
+.task-who{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:.5rem;font-weight:700;color:#fff;flex-shrink:0}
+.room-block{margin-bottom:6px}
+.room-name-row{display:flex;align-items:center;gap:8px;padding:4px 0 2px;
+  font-size:.72rem;font-weight:600;color:#93c5fd;cursor:pointer}
+.room-tasks{}
+.room-tasks.hidden{display:none}
+.room-toggle{font-size:.6rem;color:var(--muted);transition:transform .2s}
+.room-name-row.collapsed .room-toggle{transform:rotate(-90deg)}
 @media(max-width:900px){
   .kpi-row{grid-template-columns:repeat(2,1fr)}
   .grid2,.grid3{grid-template-columns:1fr}
@@ -454,6 +496,9 @@ function render(tasks, checks) {
     </div>`;
   }).join('') || '<div style="padding:12px;color:#94a3b8;font-size:.8rem">Noch keine Aktivität.</div>';
 
+  // ── Aufgaben-Übersicht ─────────────────────────────────────────────────
+  const taskOverviewHTML = buildTaskOverview(tasks, chkMap);
+
   document.getElementById('root').innerHTML = `
   <div class="kpi-row">
     <div class="kpi blue">
@@ -535,7 +580,110 @@ function render(tasks, checks) {
       <div class="card-title"><span class="ico">⚡</span> Letzte Aktivitäten</div>
       <div class="activity-list">${actItems}</div>
     </div>
+  </div>
+
+  <div class="tasks-section">
+    <div class="card" style="margin-bottom:0;border-radius:12px 12px 0 0;padding:14px 18px 10px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="card-title" style="margin-bottom:0">
+          <span class="ico">📋</span> Alle Aufgaben – Übersicht
+        </div>
+        <div style="font-size:.72rem;color:var(--muted)">${done} / ${total} erledigt</div>
+      </div>
+    </div>
+    ${taskOverviewHTML}
   </div>`;
+}
+
+// ── Aufgaben-Übersicht ─────────────────────────────────────────────────────
+function buildTaskOverview(tasks, chkMap) {
+  const tkey = (s,f,r,t) => [s,f,r,t].join('||');
+  const esc2 = v => String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+  // Gruppieren: section → floor → room → [tasks]
+  const tree = {};
+  tasks.forEach(t => {
+    (tree[t.section] ??= {});
+    (tree[t.section][t.floor] ??= {});
+    (tree[t.section][t.floor][t.room] ??= []).push(t);
+  });
+
+  let html = '';
+  Object.entries(tree).forEach(([sec, floors]) => {
+    const m       = META[sec] || {icon:'🏠',color:'#3b82f6'};
+    const secAll  = tasks.filter(t => t.section === sec);
+    const secDone = secAll.filter(t => chkMap[tkey(t.section,t.floor,t.room,t.task_text)]?.checked).length;
+    const secPct  = secAll.length ? Math.round(secDone/secAll.length*100) : 0;
+    const secId   = 'sec_ov_' + sec.replace(/[^a-z0-9]/gi,'_');
+
+    html += `<div class="sec-block" id="${secId}">
+      <div class="sec-block-hdr" onclick="toggleSecBlock('${secId}')">
+        <span class="sec-block-ico">${m.icon}</span>
+        <span class="sec-block-name">${esc2(sec)}</span>
+        <div class="sec-block-prog">
+          <div class="sec-prog-bar"><div class="sec-prog-fill" style="width:${secPct}%"></div></div>
+          <span class="sec-prog-txt">${secDone}/${secAll.length}</span>
+        </div>
+        <span class="sec-arr">▾</span>
+      </div>
+      <div class="floor-group" id="${secId}_body">`;
+
+    Object.entries(floors).forEach(([floor, roomsObj]) => {
+      html += `<div class="floor-lbl">${esc2(floor)}</div>`;
+
+      Object.entries(roomsObj).forEach(([room, rtasks]) => {
+        const rid   = 'rm_ov_' + (sec+floor+room).replace(/[^a-z0-9]/gi,'_');
+        const rDone = rtasks.filter(t => chkMap[tkey(t.section,t.floor,t.room,t.task_text)]?.checked).length;
+        const rPct  = rtasks.length ? Math.round(rDone/rtasks.length*100) : 0;
+
+        html += `<div class="room-block">
+          <div class="room-name-row" onclick="toggleRoom('${rid}')">
+            <span class="room-toggle">▾</span>
+            <span style="flex:1">${esc2(room)}</span>
+            <span style="font-size:.65rem;color:var(--muted)">${rDone}/${rtasks.length} (${rPct}%)</span>
+          </div>
+          <div class="room-tasks" id="${rid}">`;
+
+        rtasks.forEach(t => {
+          const k   = tkey(t.section,t.floor,t.room,t.task_text);
+          const chk = chkMap[k];
+          const isDone = !!chk?.checked;
+          const u   = USERS.find(x => x.id === (chk?.assigned_to||''));
+          const who = u
+            ? `<div class="task-who" style="background:${u.color}" title="${u.name}">${u.initials}</div>`
+            : '';
+          const tname = t.task_text.length > 62
+            ? esc2(t.task_text.slice(0,60)) + '…'
+            : esc2(t.task_text);
+          html += `<div class="task-row">
+            <div class="task-chk ${isDone?'done':'open'}">${isDone?'✓':''}</div>
+            <span class="task-name${isDone?' done':''}" title="${esc2(t.task_text)}">${tname}</span>
+            ${who}
+          </div>`;
+        });
+
+        html += `</div></div>`;  // room-tasks, room-block
+      });
+    });
+
+    html += `</div></div>`;  // floor-group, sec-block
+  });
+  return html || '<div style="padding:20px;color:var(--muted);text-align:center">Keine Aufgaben gefunden.</div>';
+}
+
+function toggleSecBlock(id) {
+  const el   = document.getElementById(id);
+  const body = document.getElementById(id+'_body');
+  if (!el || !body) return;
+  el.classList.toggle('collapsed');
+  body.style.display = el.classList.contains('collapsed') ? 'none' : '';
+}
+function toggleRoom(id) {
+  const el  = document.getElementById(id);
+  const row = el?.previousElementSibling;
+  if (!el || !row) return;
+  el.classList.toggle('hidden');
+  row.classList.toggle('collapsed');
 }
 
 // ── Realtime ──────────────────────────────────────────────────────────────
