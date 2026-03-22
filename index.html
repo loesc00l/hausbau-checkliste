@@ -89,6 +89,10 @@ header h1{font-size:1.25rem;font-weight:700}
   padding:7px 13px;border-radius:18px;font-size:.72rem;opacity:0;
   transition:opacity .3s;pointer-events:none;z-index:200}
 .sync-badge.show{opacity:1}
+.dash-btn{color:rgba(255,255,255,.85);font-size:.78rem;text-decoration:none;
+  padding:5px 13px;border:1px solid rgba(255,255,255,.3);border-radius:8px;
+  background:rgba(255,255,255,.1);transition:all .15s;white-space:nowrap}
+.dash-btn:hover{background:rgba(255,255,255,.22);color:#fff}
 .loading{padding:40px;text-align:center;color:#718096;font-size:.9rem}
 .titem-right{display:flex;align-items:center;gap:4px;flex-shrink:0;position:relative}
 .assign-badge{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;
@@ -274,6 +278,7 @@ header h1{font-size:1.25rem;font-weight:700}
       <span id="progTxt">Lade…</span>
       <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
     </div>
+    <a class="dash-btn" href="dashboard.html">📊 Dashboard</a>
     <div class="user-badge" onclick="document.getElementById('userModal').classList.remove('hidden')" id="userBadge">
       <div class="avatar" id="hdrAvatar" style="background:#718096">?</div>
       <span class="uname" id="hdrName">Auswählen</span>
