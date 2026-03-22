@@ -96,8 +96,8 @@ header h1{font-size:1.25rem;font-weight:700}
   cursor:pointer;transition:opacity .15s;border:1.5px solid transparent}
 .assign-badge:hover{opacity:.75}
 .assign-badge.empty{background:#edf2f7;color:#a0aec0;border-color:#e2e8f0;font-size:.65rem}
-.assign-menu{position:absolute;right:0;top:22px;background:#fff;border:1px solid #e2e8f0;
-  border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.13);z-index:400;padding:5px;min-width:150px}
+.assign-menu{position:fixed;background:#fff;border:1px solid #e2e8f0;
+  border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.13);z-index:400;padding:5px;min-width:160px}
 .assign-mi{display:flex;align-items:center;gap:9px;padding:7px 10px;cursor:pointer;
   border-radius:7px;font-size:.78rem;color:#2d3748;transition:background .1s}
 .assign-mi:hover{background:#f0f4f8}
@@ -508,23 +508,30 @@ async function toggle(s, f, r, t) {
 function showAssignMenu(e, s, f, r, t) {
   e.stopPropagation();
   document.querySelectorAll('.assign-menu').forEach(m => m.remove());
-  const k   = tkey(s,f,r,t);
-  const cur = checks[k]?.ass || '';
-  const esc = JSON.stringify;
-  let html  = USERS.map(u => `
-    <div class="assign-mi" onclick="assignTask(${esc(s)},${esc(f)},${esc(r)},${esc(t)},${esc(u.id)})">
+  const k    = tkey(s,f,r,t);
+  const cur  = checks[k]?.ass || '';
+  const esc  = JSON.stringify;
+  const rect = e.currentTarget.getBoundingClientRect();
+  let html   = USERS.map(u => `
+    <div class="assign-mi" onclick="assignTask(${esc(s)},${esc(f)},${esc(r)},${esc(t)},${esc(u.id)});document.querySelectorAll('.assign-menu').forEach(m=>m.remove())">
       <div class="oa" style="background:${u.color}">${u.initials}</div>
       <span>${u.name}${cur===u.id?' ✓':''}</span>
     </div>`).join('');
-  html += `<div class="assign-mi" onclick="assignTask(${esc(s)},${esc(f)},${esc(r)},${esc(t)},'')">
+  html += `<div class="assign-mi" onclick="assignTask(${esc(s)},${esc(f)},${esc(r)},${esc(t)},'');document.querySelectorAll('.assign-menu').forEach(m=>m.remove())">
     <div class="oa" style="background:#e2e8f0;color:#718096">✕</div>
     <span>Niemand</span>
   </div>`;
   const menu = document.createElement('div');
   menu.className = 'assign-menu';
   menu.innerHTML = html;
-  e.currentTarget.closest('.titem-right').appendChild(menu);
-  setTimeout(() => document.addEventListener('click', () => menu.remove(), {once:true}), 10);
+  // position:fixed, unter dem Button, rechtsbündig
+  const top   = rect.bottom + 4;
+  const right = window.innerWidth - rect.right;
+  menu.style.top   = top + 'px';
+  menu.style.right = right + 'px';
+  document.body.appendChild(menu);
+  setTimeout(() => document.addEventListener('click', () =>
+    document.querySelectorAll('.assign-menu').forEach(m=>m.remove()), {once:true}), 50);
 }
 async function assignTask(s, f, r, t, userId) {
   const k   = tkey(s,f,r,t);
@@ -729,28 +736,33 @@ function buildAssignOpts(current) {
   });
 }
 function openDetail(s, f, r, t) {
-  _detKey = tkey(s,f,r,t);
-  const det = details[_detKey] || {};
-  const chk = checks[_detKey] || {};
-  _detAss   = chk.ass || '';
-  document.getElementById('detTitle').textContent      = t;
-  document.getElementById('detBreadcrumb').textContent = s.split('-').slice(-1)[0].trim() + ' › ' + f + ' › ' + r;
-  document.getElementById('detStatus').value   = det.status   || 'Offen';
-  document.getElementById('detPriority').value = det.priority || 'Mittel';
-  document.getElementById('detDue').value      = det.due_date || '';
-  document.getElementById('detDesc').value     = det.description || '';
-  buildAssignOpts(_detAss);
-  // Erledigt-Datum anzeigen
-  const wrap = document.getElementById('detCompletedWrap');
-  if (chk.completedAt) {
-    wrap.style.display = 'block';
-    document.getElementById('detCompleted').textContent = fmtDateTime(chk.completedAt);
-  } else {
-    wrap.style.display = 'none';
+  try {
+    _detKey = tkey(s,f,r,t);
+    const det = details[_detKey] || {};
+    const chk = checks[_detKey]  || {};
+    _detAss   = chk.ass || '';
+    document.getElementById('detTitle').textContent      = t;
+    document.getElementById('detBreadcrumb').textContent =
+      s.split('-').slice(-1)[0].trim() + ' › ' + f + ' › ' + r;
+    document.getElementById('detStatus').value   = det.status   || 'Offen';
+    document.getElementById('detPriority').value = det.priority || 'Mittel';
+    document.getElementById('detDue').value      = det.due_date || '';
+    document.getElementById('detDesc').value     = det.description || '';
+    buildAssignOpts(_detAss);
+    const wrap = document.getElementById('detCompletedWrap');
+    if (chk.completedAt) {
+      wrap.style.display = 'block';
+      document.getElementById('detCompleted').textContent = fmtDateTime(chk.completedAt);
+    } else {
+      wrap.style.display = 'none';
+    }
+    document.getElementById('drawerOv').classList.add('open');
+    document.getElementById('detDrawer').classList.add('open');
+    setTimeout(() => document.getElementById('detDesc').focus(), 280);
+  } catch(err) {
+    console.error('openDetail Fehler:', err);
+    alert('Fehler beim Öffnen der Details: ' + err.message);
   }
-  document.getElementById('drawerOv').classList.add('open');
-  document.getElementById('detDrawer').classList.add('open');
-  setTimeout(() => document.getElementById('detDesc').focus(), 280);
 }
 function closeDetail() {
   document.getElementById('drawerOv').classList.remove('open');
