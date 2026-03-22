@@ -109,6 +109,40 @@ header h1{font-size:1.25rem;font-weight:700}
 .pw-btn{width:100%;padding:10px;background:#2c5282;color:#fff;border:none;
   border-radius:8px;font-size:.9rem;cursor:pointer;font-weight:600;transition:background .15s}
 .pw-btn:hover{background:#2a4a7f}
+.detail-btn{background:none;border:none;color:#a0aec0;cursor:pointer;font-size:.78rem;
+  padding:1px 4px;border-radius:4px;transition:color .15s;flex-shrink:0;line-height:1}
+.detail-btn:hover{color:#3182ce}
+.detail-btn.has-info{color:#3182ce}
+.status-chip{display:inline-flex;align-items:center;padding:1px 7px;border-radius:10px;
+  font-size:.62rem;font-weight:700;flex-shrink:0}
+.status-Offen{background:#fef3c7;color:#92400e}
+.status-InBearbeitung{background:#dbeafe;color:#1e40af}
+.status-Erledigt{background:#dcfce7;color:#166534}
+.status-Blockiert{background:#fee2e2;color:#991b1b}
+.det-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);
+  display:flex;align-items:center;justify-content:center;z-index:600}
+.det-modal-bg.hidden{display:none}
+.det-modal{background:#fff;border-radius:14px;padding:26px;width:460px;max-width:95vw;
+  box-shadow:0 20px 60px rgba(0,0,0,.22);max-height:90vh;overflow-y:auto}
+.det-modal h3{font-size:.95rem;font-weight:700;color:#1a365d;margin-bottom:4px;line-height:1.4}
+.det-room{font-size:.72rem;color:#718096;margin-bottom:18px}
+.det-field{margin-bottom:14px}
+.det-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
+  color:#718096;margin-bottom:5px}
+.det-textarea{width:100%;padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;
+  font-size:.82rem;color:#2d3748;resize:vertical;min-height:90px;outline:none;
+  font-family:inherit;transition:border-color .15s}
+.det-textarea:focus{border-color:#3182ce}
+.det-select{width:100%;padding:8px 11px;border:1px solid #e2e8f0;border-radius:8px;
+  font-size:.82rem;color:#2d3748;outline:none;background:#fff;cursor:pointer}
+.det-select:focus{border-color:#3182ce}
+.det-actions{display:flex;gap:9px;margin-top:18px}
+.det-save{flex:1;padding:9px;background:#2c5282;color:#fff;border:none;border-radius:8px;
+  font-size:.85rem;cursor:pointer;font-weight:600}
+.det-save:hover{background:#2a4a7f}
+.det-cancel{padding:9px 16px;background:#f0f4f8;color:#4a5568;border:none;
+  border-radius:8px;font-size:.85rem;cursor:pointer}
+.det-cancel:hover{background:#e2e8f0}
 @media(max-width:680px){
   .sidebar{display:none}
   .main{margin-left:0;padding:12px}
@@ -136,6 +170,38 @@ header h1{font-size:1.25rem;font-weight:700}
     <h2>👋 Wer bist du?</h2>
     <p>Wähle deinen Namen – deine Häkchen sind dann für alle sichtbar.</p>
     <div id="userOpts"></div>
+  </div>
+</div>
+
+<div class="det-modal-bg hidden" id="detModal">
+  <div class="det-modal">
+    <h3 id="detTitle"></h3>
+    <div class="det-room" id="detRoom"></div>
+    <div class="det-field">
+      <div class="det-label">Status</div>
+      <select class="det-select" id="detStatus">
+        <option>Offen</option>
+        <option>In Bearbeitung</option>
+        <option>Erledigt</option>
+        <option>Blockiert</option>
+      </select>
+    </div>
+    <div class="det-field">
+      <div class="det-label">Priorität</div>
+      <select class="det-select" id="detPriority">
+        <option>Hoch</option>
+        <option>Mittel</option>
+        <option>Niedrig</option>
+      </select>
+    </div>
+    <div class="det-field">
+      <div class="det-label">Beschreibung / Notizen</div>
+      <textarea class="det-textarea" id="detDesc" placeholder="Notizen, Links, Details…"></textarea>
+    </div>
+    <div class="det-actions">
+      <button class="det-cancel" onclick="closeDetail()">Abbrechen</button>
+      <button class="det-save"   onclick="saveDetail()">💾 Speichern</button>
+    </div>
   </div>
 </div>
 
@@ -185,11 +251,13 @@ const sb = supabase.createClient(SB_URL, SB_KEY);
 
 // ── State ─────────────────────────────────────────────────────────────────
 let tasks   = {};  // section → floor → room → [task_text, ...]
-let checks  = {};  // task_key → {checked, by}
+let checks  = {};  // task_key → {checked, by, ass}
 let custom  = {};  // section||floor||room → [task_text, ...]
+let details = {};  // task_key → {description, status, priority}
 let me      = null;
 let flt     = 'all';
 let srch    = '';
+let _detKey = null;  // aktuell geöffnetes Detail
 
 // ── Keys ──────────────────────────────────────────────────────────────────
 const tkey = (s,f,r,t) => [s,f,r,t].join('||');
@@ -277,13 +345,18 @@ function showError(msg) {
 }
 async function loadAll() {
   try {
-  const [r1, r2, r3] = await Promise.all([
+  const [r1, r2, r3, r4] = await Promise.all([
     sb.from('hausbau_tasks').select('section,floor,room,task_text,sort_order').order('sort_order'),
     sb.from('hausbau_checks').select('task_key,checked,checked_by,assigned_to'),
     sb.from('hausbau_custom_tasks').select('section,floor,room,task_text,sort_order').order('sort_order'),
+    sb.from('hausbau_task_details').select('task_key,description,status,priority'),
   ]);
   if (r1.error) { showError('hausbau_tasks: ' + r1.error.message); return; }
-  const tr = r1.data, cr = r2.data || [], ctr = r3.data || [];
+  const tr = r1.data, cr = r2.data || [], ctr = r3.data || [], dr = r4.data || [];
+
+  // Details
+  details = {};
+  dr.forEach(r => { details[r.task_key] = {description:r.description||'',status:r.status||'Offen',priority:r.priority||'Mittel'}; });
 
   // Tasks aufbauen
   tasks = {};
@@ -324,8 +397,13 @@ function subscribe() {
       flash(); rebuildUI();
     })
     .on('postgres_changes', {event:'*', schema:'public', table:'hausbau_tasks'}, async () => {
-      // Aufgabenliste hat sich geändert (neuer Excel-Sync) → neu laden
       flash(); await loadAll();
+    })
+    .on('postgres_changes', {event:'*', schema:'public', table:'hausbau_task_details'}, p => {
+      const row = p.new;
+      if (!row) return;
+      details[row.task_key] = {description:row.description||'',status:row.status||'Offen',priority:row.priority||'Mittel'};
+      flash(); rebuildUI();
     })
     .on('postgres_changes', {event:'*', schema:'public', table:'hausbau_custom_tasks'}, p => {
       const row = p.new || p.old;
@@ -437,10 +515,18 @@ function trow(s, f, r, t) {
          onclick="showAssignMenu(event,${esc(s)},${esc(f)},${esc(r)},${esc(t)})">${aU.initials}</div>`
     : `<div class="assign-badge empty" title="Zuweisen"
          onclick="showAssignMenu(event,${esc(s)},${esc(f)},${esc(r)},${esc(t)})">＋</div>`;
+  const det  = details[k] || {};
+  const stCls = (det.status||'Offen').replace(/\s+/g,'');
+  const stChip = det.status && det.status!=='Offen'
+    ? `<span class="status-chip status-${stCls}">${det.status}</span>` : '';
+  const hasInfo = det.description||det.status==='In Bearbeitung'||det.status==='Blockiert';
+  const infoBtn = `<button class="detail-btn${hasInfo?' has-info':''}" title="Details / Notizen"
+    onclick="openDetail(${esc(s)},${esc(f)},${esc(r)},${esc(t)})">ℹ</button>`;
   return `<div class="titem${chk?' done':''}">
     <input type="checkbox" ${chk?'checked':''} onchange="toggle(${esc(s)},${esc(f)},${esc(r)},${esc(t)})">
     <label class="tlbl" onclick="this.previousElementSibling.click()">${t}</label>
-    <div class="titem-right">${who}${aBtn}</div>
+    ${stChip}
+    <div class="titem-right">${who}${aBtn}${infoBtn}</div>
   </div>`;
 }
 
@@ -531,6 +617,41 @@ function rebuildUI() {
   document.getElementById('sb').innerHTML = sbHtml;
   globalProgress();
 }
+
+// ── Detail-Modal ──────────────────────────────────────────────────────────
+function openDetail(s, f, r, t) {
+  _detKey = tkey(s,f,r,t);
+  const det = details[_detKey] || {};
+  document.getElementById('detTitle').textContent = t;
+  document.getElementById('detRoom').textContent  = r + ' · ' + f;
+  document.getElementById('detStatus').value   = det.status   || 'Offen';
+  document.getElementById('detPriority').value = det.priority || 'Mittel';
+  document.getElementById('detDesc').value     = det.description || '';
+  document.getElementById('detModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('detDesc').focus(), 80);
+}
+function closeDetail() {
+  document.getElementById('detModal').classList.add('hidden');
+  _detKey = null;
+}
+async function saveDetail() {
+  if (!_detKey) return;
+  const status   = document.getElementById('detStatus').value;
+  const priority = document.getElementById('detPriority').value;
+  const desc     = document.getElementById('detDesc').value.trim();
+  details[_detKey] = {description:desc, status, priority};
+  closeDetail();
+  rebuildUI();
+  await sb.from('hausbau_task_details').upsert(
+    {task_key:_detKey, description:desc, status, priority,
+      updated_at: new Date().toISOString()},
+    {onConflict:'task_key'}
+  );
+}
+// Schließen per Klick auf Hintergrund
+document.getElementById('detModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('detModal')) closeDetail();
+});
 
 // ── Start ─────────────────────────────────────────────────────────────────
 initModal();
