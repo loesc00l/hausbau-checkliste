@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hausbau Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f172a;--card:#1e293b;--card2:#273449;--border:#334155;
+  --txt:#e2e8f0;--muted:#94a3b8;--accent:#3b82f6;--green:#22c55e;
+  --yellow:#f59e0b;--red:#ef4444;--purple:#a855f7;
+}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
+header{background:linear-gradient(135deg,#1e3a5f,#2c5282);padding:18px 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 2px 12px rgba(0,0,0,.4)}
+header h1{font-size:1.3rem;font-weight:700;display:flex;align-items:center;gap:10px}
+.hdr-meta{font-size:.75rem;color:rgba(255,255,255,.6);margin-top:3px}
+.hdr-right{display:flex;align-items:center;gap:14px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);
+  animation:pulse 2s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.refresh-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+  color:#fff;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:.78rem;
+  transition:background .15s}
+.refresh-btn:hover{background:rgba(255,255,255,.22)}
+.dash-link{color:rgba(255,255,255,.7);font-size:.78rem;text-decoration:none;
+  padding:6px 14px;border:1px solid rgba(255,255,255,.2);border-radius:8px;
+  transition:all .15s}
+.dash-link:hover{background:rgba(255,255,255,.12);color:#fff}
+main{padding:24px 28px;max-width:1400px;margin:0 auto}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:18px 20px;display:flex;flex-direction:column;gap:6px}
+.kpi-val{font-size:2.2rem;font-weight:800;line-height:1}
+.kpi-lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+.kpi-sub{font-size:.78rem;color:var(--muted);margin-top:2px}
+.kpi.blue  .kpi-val{color:var(--accent)}
+.kpi.green .kpi-val{color:var(--green)}
+.kpi.red   .kpi-val{color:var(--red)}
+.kpi.gold  .kpi-val{color:var(--yellow)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.card-title{font-size:.72rem;text-transform:uppercase;letter-spacing:1px;
+  color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:7px}
+.card-title .ico{font-size:1rem}
+.donut-wrap{display:flex;align-items:center;gap:24px}
+.donut{position:relative;width:130px;height:130px;flex-shrink:0}
+.donut svg{transform:rotate(-90deg)}
+.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center}
+.donut-pct{font-size:1.6rem;font-weight:800;color:var(--green)}
+.donut-sub{font-size:.65rem;color:var(--muted)}
+.donut-legend{flex:1}
+.dl-row{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-size:.8rem}
+.dl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.dl-val{margin-left:auto;font-weight:700}
+.section-bar{margin-bottom:14px}
+.sb-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.sb-name{font-size:.82rem;font-weight:600;display:flex;align-items:center;gap:7px}
+.sb-pct{font-size:.75rem;color:var(--muted)}
+.bar-track{background:var(--border);border-radius:6px;height:8px;overflow:hidden}
+.bar-fill{height:100%;border-radius:6px;transition:width 1s ease}
+.person-grid{display:flex;flex-direction:column;gap:12px}
+.person-row{display:flex;align-items:center;gap:12px}
+.p-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-weight:700;font-size:.85rem;color:#fff;flex-shrink:0}
+.p-info{flex:1}
+.p-name{font-size:.82rem;font-weight:600;margin-bottom:4px}
+.p-bar{background:var(--border);border-radius:5px;height:6px;overflow:hidden}
+.p-fill{height:100%;border-radius:5px;transition:width 1s ease}
+.p-stats{font-size:.7rem;color:var(--muted);margin-top:3px}
+.room-list{display:flex;flex-direction:column;gap:6px}
+.room-item{display:flex;align-items:center;gap:10px;padding:8px 12px;
+  background:var(--card2);border-radius:8px;font-size:.78rem}
+.room-rank{width:20px;text-align:center;color:var(--muted);font-size:.7rem;font-weight:700}
+.room-name{flex:1;font-weight:500}
+.room-floor{font-size:.68rem;color:var(--muted)}
+.open-badge{background:rgba(239,68,68,.15);color:var(--red);
+  padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700;flex-shrink:0}
+.done-badge{background:rgba(34,197,94,.15);color:var(--green);
+  padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700;flex-shrink:0}
+.floor-grid{display:flex;flex-direction:column;gap:10px}
+.floor-row{display:flex;align-items:center;gap:12px}
+.floor-name{font-size:.78rem;width:180px;flex-shrink:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.floor-bar{flex:1;background:var(--border);border-radius:5px;height:10px;overflow:hidden}
+.floor-fill{height:100%;border-radius:5px;transition:width 1s ease;background:var(--accent)}
+.floor-pct{font-size:.72rem;color:var(--muted);width:70px;text-align:right;flex-shrink:0}
+.activity-list{display:flex;flex-direction:column;gap:8px}
+.act-item{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;
+  background:var(--card2);border-radius:8px}
+.act-avatar{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:.6rem;font-weight:700;color:#fff;flex-shrink:0;margin-top:1px}
+.act-info{flex:1;min-width:0}
+.act-task{font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.act-meta{font-size:.68rem;color:var(--muted);margin-top:2px}
+.act-time{font-size:.68rem;color:var(--muted);flex-shrink:0}
+.loading-msg{padding:60px;text-align:center;color:var(--muted)}
+.pw-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);
+  display:flex;align-items:center;justify-content:center;z-index:999}
+.pw-modal.hidden{display:none}
+.pw-box{background:#1e293b;border:1px solid #334155;border-radius:16px;
+  padding:32px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.pw-box h2{font-size:1.1rem;margin-bottom:6px;color:#e2e8f0}
+.pw-box p{font-size:.8rem;color:#94a3b8;margin-bottom:20px}
+.pw-inp{width:100%;padding:11px 14px;background:#0f172a;border:1px solid #334155;
+  border-radius:8px;color:#e2e8f0;font-size:.9rem;outline:none;margin-bottom:10px}
+.pw-inp:focus{border-color:#3b82f6}
+.pw-btn{width:100%;padding:11px;background:#2c5282;color:#fff;border:none;
+  border-radius:8px;font-size:.9rem;cursor:pointer;font-weight:600}
+.pw-btn:hover{background:#2a4a7f}
+.pw-err{color:#ef4444;font-size:.75rem;margin-bottom:10px;display:none}
+@media(max-width:900px){
+  .kpi-row{grid-template-columns:repeat(2,1fr)}
+  .grid2,.grid3{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="pw-modal hidden" id="pwModal">
+  <div class="pw-box">
+    <h2>🔒 Hausbau Dashboard</h2>
+    <p>Bitte Passwort eingeben.</p>
+    <input class="pw-inp" type="password" id="pwInput" placeholder="Passwort"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="pw-err" id="pwErr">❌ Falsches Passwort</div>
+    <button class="pw-btn" onclick="doLogin()">Einloggen</button>
+  </div>
+</div>
+
+<header>
+  <div>
+    <h1>📊 Hausbau Dashboard</h1>
+    <div class="hdr-meta" id="lastUpdate">Wird geladen…</div>
+  </div>
+  <div class="hdr-right">
+    <div class="live-dot" title="Live-Daten"></div>
+    <button class="refresh-btn" onclick="loadDashboard()">↻ Aktualisieren</button>
+    <a class="dash-link" href="index.html">📋 Checkliste</a>
+  </div>
+</header>
+
+<main>
+  <div id="root"><div class="loading-msg">⏳ Dashboard wird geladen…</div></div>
+</main>
+
+<script>
+const SB_URL = atob("aHR0cHM6Ly9raW1vZ3N3Y29udXhpanN6cXBxei5zdXBhYmFzZS5jbw==");
+const SB_KEY = atob("ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW10cGJXOW5jM2RqYjI1MWVHbHFjM3B4Y0hGNklpd2ljbTlzWlNJNkluTmxjblpwWTJWZmNtOXNaU0lzSW1saGRDSTZNVGMzTkRFNU56WXlOU3dpWlhod0lqb3lNRGc1Tnpjek5qSTFmUS56bXFtX2pSRzBYbkR3LVJhNE9mZkpYbENyVlBuSXlOWC0wRzA2ZVRzZG9B");
+const USERS  = [{"id": "lucian", "name": "Lucian", "initials": "L", "color": "#2c5282"}, {"id": "simona", "name": "Simona", "initials": "S", "color": "#744210"}, {"id": "justin", "name": "Justin", "initials": "J", "color": "#276749"}];
+const META   = {"HH - Haupthaus": {"icon": "🏡", "color": "#2c5282"}, "ELW - Einliegerwohnung": {"icon": "🏘️", "color": "#375623"}, "Drausen - Aussenbereich": {"icon": "🌳", "color": "#7b3f00"}};
+const PW_HASH = "";
+
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+// ── Passwort ───────────────────────────────────────────────────────────────
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function isAuthed() {
+  if (!PW_HASH) return true;
+  return Date.now() < parseInt(localStorage.getItem('hb_auth_until')||'0');
+}
+async function doLogin() {
+  const h = await sha256(document.getElementById('pwInput').value);
+  if (h === PW_HASH) {
+    localStorage.setItem('hb_auth_until', Date.now()+30*24*60*60*1000);
+    document.getElementById('pwModal').classList.add('hidden');
+    document.getElementById('pwErr').style.display='none';
+    loadDashboard();
+  } else {
+    document.getElementById('pwErr').style.display='block';
+    document.getElementById('pwInput').value='';
+  }
+}
+function checkAuth() {
+  if (isAuthed()) loadDashboard();
+  else {
+    document.getElementById('pwModal').classList.remove('hidden');
+    setTimeout(()=>document.getElementById('pwInput').focus(),100);
+  }
+}
+
+// ── Daten laden ───────────────────────────────────────────────────────────
+async function loadDashboard() {
+  try {
+    const [r1,r2,r3] = await Promise.all([
+      sb.from('hausbau_tasks').select('section,floor,room,task_text'),
+      sb.from('hausbau_checks').select('task_key,checked,checked_by,assigned_to,updated_at'),
+      sb.from('hausbau_custom_tasks').select('section,floor,room,task_text'),
+    ]);
+    if (r1.error) { showErr(r1.error.message); return; }
+    const tasks   = r1.data || [];
+    const checks  = r2.data || [];
+    const customs = r3.data || [];
+    const allTasks = [...tasks, ...customs];
+    render(allTasks, checks);
+  } catch(e) { showErr(e.message); }
+}
+function showErr(msg) {
+  document.getElementById('root').innerHTML =
+    `<div style="padding:60px;text-align:center;color:#ef4444">⚠️ ${msg}</div>`;
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function render(tasks, checks) {
+  const now = new Date();
+  document.getElementById('lastUpdate').textContent =
+    'Stand: ' + now.toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'});
+
+  // Build lookup: task_key → check
+  const chkMap = {};
+  checks.forEach(c => { chkMap[c.task_key] = c; });
+
+  const tkey = (s,f,r,t) => [s,f,r,t].join('||');
+
+  // Total stats
+  const total = tasks.length;
+  const done  = tasks.filter(t => chkMap[tkey(t.section,t.floor,t.room,t.task_text)]?.checked).length;
+  const open  = total - done;
+  const pct   = total ? Math.round(done/total*100) : 0;
+
+  // Per section
+  const sections = {};
+  tasks.forEach(t => {
+    const k = tkey(t.section,t.floor,t.room,t.task_text);
+    const s = t.section;
+    sections[s] ??= {total:0,done:0};
+    sections[s].total++;
+    if (chkMap[k]?.checked) sections[s].done++;
+  });
+
+  // Per floor (across all sections)
+  const floors = {};
+  tasks.forEach(t => {
+    const k = tkey(t.section,t.floor,t.room,t.task_text);
+    const fl = t.floor;
+    floors[fl] ??= {total:0,done:0};
+    floors[fl].total++;
+    if (chkMap[k]?.checked) floors[fl].done++;
+  });
+
+  // Per person (assigned)
+  const persons = {};
+  USERS.forEach(u => { persons[u.id] = {assigned:0,done:0,user:u}; });
+  tasks.forEach(t => {
+    const k = tkey(t.section,t.floor,t.room,t.task_text);
+    const c = chkMap[k];
+    if (c?.assigned_to && persons[c.assigned_to]) {
+      persons[c.assigned_to].assigned++;
+      if (c.checked) persons[c.assigned_to].done++;
+    }
+  });
+
+  // Rooms with most open tasks
+  const rooms = {};
+  tasks.forEach(t => {
+    const k = tkey(t.section,t.floor,t.room,t.task_text);
+    const rk = t.section+'||'+t.floor+'||'+t.room;
+    rooms[rk] ??= {section:t.section,floor:t.floor,room:t.room,total:0,done:0};
+    rooms[rk].total++;
+    if (chkMap[k]?.checked) rooms[rk].done++;
+  });
+  const topOpen = Object.values(rooms)
+    .map(r => ({...r, open:r.total-r.done}))
+    .filter(r => r.open > 0)
+    .sort((a,b) => b.open-a.open).slice(0,8);
+  const topDone = Object.values(rooms)
+    .filter(r => r.done>0)
+    .sort((a,b) => (b.done/b.total)-(a.done/a.total)).slice(0,5);
+
+  // Recent activity (last 10 checked)
+  const recent = [...checks]
+    .filter(c => c.checked && c.updated_at)
+    .sort((a,b) => new Date(b.updated_at)-new Date(a.updated_at))
+    .slice(0,8);
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  const esc = v => String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+  // Donut SVG
+  const r=54, cx=65, cy=65, circ=2*Math.PI*r;
+  const offset = circ*(1-pct/100);
+  const donutSVG = `<svg width="130" height="130" viewBox="0 0 130 130">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#334155" stroke-width="12"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#22c55e" stroke-width="12"
+      stroke-dasharray="${circ}" stroke-dashoffset="${offset}" stroke-linecap="round"/>
+  </svg>`;
+
+  // Section bars HTML
+  const sectionBars = Object.entries(sections).map(([s,st]) => {
+    const m   = META[s] || {icon:'🏠',color:'#3b82f6'};
+    const p   = st.total ? Math.round(st.done/st.total*100) : 0;
+    return `<div class="section-bar">
+      <div class="sb-head">
+        <span class="sb-name">${m.icon} ${esc(s.split('-').slice(-1)[0].trim())}</span>
+        <span class="sb-pct">${st.done}/${st.total} · ${p}%</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${p}%;background:${m.color}"></div></div>
+    </div>`;
+  }).join('');
+
+  // Floor bars
+  const floorBars = Object.entries(floors)
+    .sort((a,b) => b[1].total-a[1].total)
+    .map(([f,st]) => {
+      const p = st.total ? Math.round(st.done/st.total*100) : 0;
+      return `<div class="floor-row">
+        <div class="floor-name" title="${esc(f)}">${esc(f)}</div>
+        <div class="floor-bar"><div class="floor-fill" style="width:${p}%"></div></div>
+        <div class="floor-pct">${st.done}/${st.total} (${p}%)</div>
+      </div>`;
+    }).join('');
+
+  // Person rows
+  const personRows = USERS.map(u => {
+    const p  = persons[u.id] || {assigned:0,done:0,user:u};
+    const pct2= p.assigned ? Math.round(p.done/p.assigned*100) : 0;
+    const byMe = checks.filter(c=>c.checked_by===u.id).length;
+    return `<div class="person-row">
+      <div class="p-avatar" style="background:${u.color}">${u.initials}</div>
+      <div class="p-info">
+        <div class="p-name">${u.name}</div>
+        <div class="p-bar"><div class="p-fill" style="width:${pct2}%;background:${u.color}"></div></div>
+        <div class="p-stats">
+          ${p.assigned} zugewiesen · ${p.done} erledigt
+          ${byMe ? '· <span style="color:#22c55e">'+byMe+' abgehakt</span>' : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Top open rooms
+  const openRooms = topOpen.map((rm,i) => {
+    const m = META[rm.section] || {icon:'🏠',color:'#3b82f6'};
+    return `<div class="room-item">
+      <div class="room-rank">#${i+1}</div>
+      <div style="font-size:.85rem">${m.icon}</div>
+      <div class="room-name">
+        <div>${esc(rm.room)}</div>
+        <div class="room-floor">${esc(rm.floor)}</div>
+      </div>
+      <div class="open-badge">${rm.open} offen</div>
+    </div>`;
+  }).join('') || '<div style="padding:12px;color:#94a3b8;font-size:.8rem">Alle Aufgaben erledigt! 🎉</div>';
+
+  // Top done rooms
+  const doneRooms = topDone.map((rm,i) => {
+    const m = META[rm.section] || {icon:'🏠',color:'#3b82f6'};
+    const p2 = Math.round(rm.done/rm.total*100);
+    return `<div class="room-item">
+      <div class="room-rank">#${i+1}</div>
+      <div style="font-size:.85rem">${m.icon}</div>
+      <div class="room-name">
+        <div>${esc(rm.room)}</div>
+        <div class="room-floor">${esc(rm.floor)}</div>
+      </div>
+      <div class="done-badge">${p2}%</div>
+    </div>`;
+  }).join('') || '<div style="padding:12px;color:#94a3b8;font-size:.8rem">Noch keine erledigten Räume.</div>';
+
+  // Recent activity
+  function relTime(iso) {
+    const d = (Date.now()-new Date(iso))/1000;
+    if (d<60) return 'gerade eben';
+    if (d<3600) return Math.round(d/60)+'min';
+    if (d<86400) return Math.round(d/3600)+'h';
+    return Math.round(d/86400)+'d';
+  }
+  const actItems = recent.map(c => {
+    const u   = USERS.find(x=>x.id===c.checked_by) || {initials:'?',color:'#718096',name:'?'};
+    const parts = c.task_key.split('||');
+    const room = parts[2]||'', task = parts[3]||c.task_key;
+    return `<div class="act-item">
+      <div class="act-avatar" style="background:${u.color}">${u.initials}</div>
+      <div class="act-info">
+        <div class="act-task" title="${esc(task)}">${esc(task.slice(0,55))}${task.length>55?'…':''}</div>
+        <div class="act-meta">${esc(room)} · ${u.name}</div>
+      </div>
+      <div class="act-time">${relTime(c.updated_at)}</div>
+    </div>`;
+  }).join('') || '<div style="padding:12px;color:#94a3b8;font-size:.8rem">Noch keine Aktivität.</div>';
+
+  document.getElementById('root').innerHTML = `
+  <div class="kpi-row">
+    <div class="kpi blue">
+      <div class="kpi-val">${total}</div>
+      <div class="kpi-lbl">Aufgaben gesamt</div>
+      <div class="kpi-sub">inkl. eigene Aufgaben</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-val">${done}</div>
+      <div class="kpi-lbl">Erledigt</div>
+      <div class="kpi-sub">${pct}% des Gesamtprojekts</div>
+    </div>
+    <div class="kpi red">
+      <div class="kpi-val">${open}</div>
+      <div class="kpi-lbl">Offen</div>
+      <div class="kpi-sub">${Object.keys(rooms).filter(k=>{const rm=rooms[k];return rm.total>rm.done}).length} Räume betroffen</div>
+    </div>
+    <div class="kpi gold">
+      <div class="kpi-val">${pct}%</div>
+      <div class="kpi-lbl">Gesamtfortschritt</div>
+      <div class="kpi-sub">Ziel: 100% 🏁</div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><span class="ico">🎯</span> Gesamtfortschritt</div>
+      <div class="donut-wrap">
+        <div class="donut">
+          ${donutSVG}
+          <div class="donut-center">
+            <div class="donut-pct">${pct}%</div>
+            <div class="donut-sub">fertig</div>
+          </div>
+        </div>
+        <div class="donut-legend">
+          <div class="dl-row">
+            <div class="dl-dot" style="background:#22c55e"></div>
+            <span>Erledigt</span><span class="dl-val" style="color:#22c55e">${done}</span>
+          </div>
+          <div class="dl-row">
+            <div class="dl-dot" style="background:#ef4444"></div>
+            <span>Offen</span><span class="dl-val" style="color:#ef4444">${open}</span>
+          </div>
+          <div class="dl-row">
+            <div class="dl-dot" style="background:#334155"></div>
+            <span>Gesamt</span><span class="dl-val">${total}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="ico">🏗️</span> Fortschritt pro Bereich</div>
+      ${sectionBars}
+    </div>
+  </div>
+
+  <div class="grid3">
+    <div class="card">
+      <div class="card-title"><span class="ico">👥</span> Aufgaben pro Person</div>
+      <div class="person-grid">${personRows}</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="ico">🔴</span> Meiste offene Aufgaben</div>
+      <div class="room-list">${openRooms}</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="ico">✅</span> Weiteste Räume</div>
+      <div class="room-list">${doneRooms}</div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><span class="ico">📐</span> Fortschritt pro Etage</div>
+      <div class="floor-grid">${floorBars}</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="ico">⚡</span> Letzte Aktivitäten</div>
+      <div class="activity-list">${actItems}</div>
+    </div>
+  </div>`;
+}
+
+// ── Realtime ──────────────────────────────────────────────────────────────
+function subscribeRealtime() {
+  sb.channel('dashboard').on('postgres_changes',
+    {event:'*',schema:'public',table:'hausbau_checks'},
+    () => loadDashboard()
+  ).subscribe();
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────
+checkAuth();
+subscribeRealtime();
+</script>
+</body>
+</html>
