@@ -510,7 +510,7 @@ function showAssignMenu(e, s, f, r, t) {
   document.querySelectorAll('.assign-menu').forEach(m => m.remove());
   const k    = tkey(s,f,r,t);
   const cur  = checks[k]?.ass || '';
-  const esc  = JSON.stringify;
+  const esc  = v => JSON.stringify(v).replace(/"/g,'&quot;');
   const rect = e.currentTarget.getBoundingClientRect();
   let html   = USERS.map(u => `
     <div class="assign-mi" onclick="assignTask(${esc(s)},${esc(f)},${esc(r)},${esc(t)},${esc(u.id)});document.querySelectorAll('.assign-menu').forEach(m=>m.remove())">
@@ -585,7 +585,7 @@ function trow(s, f, r, t) {
   const aU   = userById(ass);
   const who  = chk && u
     ? `<div class="twho" style="background:${u.color}" title="Erledigt von ${u.name}">${u.initials}</div>` : '';
-  const esc  = JSON.stringify;
+  const esc  = v => JSON.stringify(v).replace(/"/g,'&quot;');
   const aBtn = aU
     ? `<div class="assign-badge" style="background:${aU.color}" title="Zugewiesen: ${aU.name}"
          onclick="showAssignMenu(event,${esc(s)},${esc(f)},${esc(r)},${esc(t)})">${aU.initials}</div>`
@@ -613,7 +613,7 @@ function trow(s, f, r, t) {
     onclick="openDetail(${esc(s)},${esc(f)},${esc(r)},${esc(t)})">ℹ</button>`;
   return `<div class="titem${chk?' done':''}">
     <input type="checkbox" ${chk?'checked':''} onchange="toggle(${esc(s)},${esc(f)},${esc(r)},${esc(t)})">
-    <label class="tlbl" onclick="this.previousElementSibling.click()">${t}</label>
+    <label class="tlbl" onclick="this.previousElementSibling.click()">${t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</label>
     ${dueChip}${stChip}
     <div class="titem-right">${who}${aBtn}${infoBtn}</div>
   </div>`;
@@ -628,7 +628,7 @@ function roomCard(s, f, r, base) {
   const coll = localStorage.getItem('cl:'+cid)==='1' ? 'coll' : '';
   const rows = all.map(t => trow(s,f,r,t)).join('');
   if (flt === 'mine' && !rows.trim()) return '';  // leere Karten bei Mine-Filter ausblenden
-  const esc  = JSON.stringify;
+  const esc  = v => JSON.stringify(v).replace(/"/g,'&quot;');
   return `<div class="card ${coll}" id="${cid}">
     <div class="card-hdr" onclick="toggleCard('${cid}')">
       <span class="card-ttl">${r}</span>
