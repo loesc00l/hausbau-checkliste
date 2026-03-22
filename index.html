@@ -90,6 +90,25 @@ header h1{font-size:1.25rem;font-weight:700}
   transition:opacity .3s;pointer-events:none;z-index:200}
 .sync-badge.show{opacity:1}
 .loading{padding:40px;text-align:center;color:#718096;font-size:.9rem}
+.titem-right{display:flex;align-items:center;gap:4px;flex-shrink:0;position:relative}
+.assign-badge{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:.5rem;font-weight:700;color:#fff;flex-shrink:0;
+  cursor:pointer;transition:opacity .15s;border:1.5px solid transparent}
+.assign-badge:hover{opacity:.75}
+.assign-badge.empty{background:#edf2f7;color:#a0aec0;border-color:#e2e8f0;font-size:.65rem}
+.assign-menu{position:absolute;right:0;top:22px;background:#fff;border:1px solid #e2e8f0;
+  border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.13);z-index:400;padding:5px;min-width:150px}
+.assign-mi{display:flex;align-items:center;gap:9px;padding:7px 10px;cursor:pointer;
+  border-radius:7px;font-size:.78rem;color:#2d3748;transition:background .1s}
+.assign-mi:hover{background:#f0f4f8}
+.assign-mi .oa{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:.58rem;font-weight:700;color:#fff;flex-shrink:0}
+.pw-inp{width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;
+  font-size:.9rem;outline:none;margin-bottom:8px;transition:border-color .15s}
+.pw-inp:focus{border-color:#3182ce}
+.pw-btn{width:100%;padding:10px;background:#2c5282;color:#fff;border:none;
+  border-radius:8px;font-size:.9rem;cursor:pointer;font-weight:600;transition:background .15s}
+.pw-btn:hover{background:#2a4a7f}
 @media(max-width:680px){
   .sidebar{display:none}
   .main{margin-left:0;padding:12px}
@@ -99,7 +118,20 @@ header h1{font-size:1.25rem;font-weight:700}
 </head>
 <body>
 
-<div class="modal-bg" id="userModal">
+<div class="modal-bg hidden" id="pwModal">
+  <div class="modal">
+    <h2>🔒 Hausbau Checkliste</h2>
+    <p>Bitte Passwort eingeben um fortzufahren.</p>
+    <input class="pw-inp" type="password" id="pwInput" placeholder="Passwort"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <div id="pwErr" style="color:#c53030;font-size:.75rem;margin-bottom:10px;display:none">
+      ❌ Falsches Passwort
+    </div>
+    <button class="pw-btn" onclick="doLogin()">Einloggen</button>
+  </div>
+</div>
+
+<div class="modal-bg hidden" id="userModal">
   <div class="modal">
     <h2>👋 Wer bist du?</h2>
     <p>Wähle deinen Namen – deine Häkchen sind dann für alle sichtbar.</p>
@@ -135,6 +167,7 @@ header h1{font-size:1.25rem;font-weight:700}
     <button class="flt on"  onclick="setFlt('all',this)">Alle</button>
     <button class="flt"     onclick="setFlt('open',this)">Offen</button>
     <button class="flt"     onclick="setFlt('done',this)">Erledigt</button>
+    <button class="flt"     onclick="setFlt('mine',this)" id="mineBtn">👤 Meine</button>
   </div>
   <div id="content"><div class="loading">⏳ Aufgaben werden geladen…</div></div>
 </main>
@@ -145,6 +178,7 @@ const SB_URL  = atob("aHR0cHM6Ly9raW1vZ3N3Y29udXhpanN6cXBxei5zdXBhYmFzZS5jbw==")
 const SB_KEY  = atob("ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW10cGJXOW5jM2RqYjI1MWVHbHFjM3B4Y0hGNklpd2ljbTlzWlNJNkluTmxjblpwWTJWZmNtOXNaU0lzSW1saGRDSTZNVGMzTkRFNU56WXlOU3dpWlhod0lqb3lNRGc1Tnpjek5qSTFmUS56bXFtX2pSRzBYbkR3LVJhNE9mZkpYbENyVlBuSXlOWC0wRzA2ZVRzZG9B");
 const USERS   = [{"id": "lucian", "name": "Lucian", "initials": "L", "color": "#2c5282"}, {"id": "simona", "name": "Simona", "initials": "S", "color": "#744210"}, {"id": "justin", "name": "Justin", "initials": "J", "color": "#276749"}];
 const META    = {"HH - Haupthaus": {"icon": "🏡", "color": "#2c5282"}, "ELW - Einliegerwohnung": {"icon": "🏘️", "color": "#375623"}, "Drausen - Aussenbereich": {"icon": "🌳", "color": "#7b3f00"}};
+const PW_HASH = "";  // SHA-256; leer = kein Passwort
 
 // ── Supabase ─────────────────────────────────────────────────────────────
 const sb = supabase.createClient(SB_URL, SB_KEY);
@@ -189,6 +223,40 @@ function restoreUser() {
 }
 function userById(id) { return USERS.find(u => u.id === id); }
 
+// ── Passwortschutz ────────────────────────────────────────────────────────
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+function isAuthed() {
+  if (!PW_HASH) return true;
+  return Date.now() < parseInt(localStorage.getItem('hb_auth_until') || '0');
+}
+async function doLogin() {
+  const val = document.getElementById('pwInput').value;
+  const h   = await sha256(val);
+  if (h === PW_HASH) {
+    localStorage.setItem('hb_auth_until', Date.now() + 30*24*60*60*1000);
+    document.getElementById('pwModal').classList.add('hidden');
+    document.getElementById('pwErr').style.display = 'none';
+    restoreUser();
+    loadAll().then(subscribe);
+  } else {
+    document.getElementById('pwErr').style.display = 'block';
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwInput').focus();
+  }
+}
+function checkAuth() {
+  if (isAuthed()) {
+    restoreUser();
+    loadAll().then(subscribe);
+  } else {
+    document.getElementById('pwModal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('pwInput').focus(), 120);
+  }
+}
+
 // ── Sync-Flash ────────────────────────────────────────────────────────────
 let syncTimer;
 function flash() {
@@ -211,7 +279,7 @@ async function loadAll() {
   try {
   const [r1, r2, r3] = await Promise.all([
     sb.from('hausbau_tasks').select('section,floor,room,task_text,sort_order').order('sort_order'),
-    sb.from('hausbau_checks').select('task_key,checked,checked_by'),
+    sb.from('hausbau_checks').select('task_key,checked,checked_by,assigned_to'),
     sb.from('hausbau_custom_tasks').select('section,floor,room,task_text,sort_order').order('sort_order'),
   ]);
   if (r1.error) { showError('hausbau_tasks: ' + r1.error.message); return; }
@@ -230,7 +298,7 @@ async function loadAll() {
 
   // Checks
   checks = {};
-  (cr || []).forEach(r => { checks[r.task_key] = {checked: r.checked, by: r.checked_by}; });
+  (cr || []).forEach(r => { checks[r.task_key] = {checked: r.checked, by: r.checked_by, ass: r.assigned_to||''}; });
 
   // Custom tasks
   custom = {};
@@ -252,7 +320,7 @@ function subscribe() {
       const row = p.new || p.old;
       if (!row) return;
       if (p.eventType === 'DELETE') delete checks[row.task_key];
-      else checks[row.task_key] = {checked: row.checked, by: row.checked_by};
+      else checks[row.task_key] = {checked: row.checked, by: row.checked_by, ass: row.assigned_to||''};
       flash(); rebuildUI();
     })
     .on('postgres_changes', {event:'*', schema:'public', table:'hausbau_tasks'}, async () => {
@@ -279,10 +347,46 @@ async function toggle(s, f, r, t) {
   const k    = tkey(s,f,r,t);
   const prev = checks[k]?.checked || false;
   const next = !prev;
-  checks[k]  = {checked: next, by: next ? me.id : ''};
+  const curAss = checks[k]?.ass || '';
+  checks[k]  = {checked: next, by: next ? me.id : '', ass: curAss};
   flash(); rebuildUI();
   await sb.from('hausbau_checks').upsert(
-    {task_key:k, checked:next, checked_by: next ? me.id : '', updated_at: new Date().toISOString()},
+    {task_key:k, checked:next, checked_by: next ? me.id : '',
+      assigned_to: curAss, updated_at: new Date().toISOString()},
+    {onConflict:'task_key'}
+  );
+}
+
+// ── Aufgabe zuweisen ──────────────────────────────────────────────────────
+function showAssignMenu(e, s, f, r, t) {
+  e.stopPropagation();
+  document.querySelectorAll('.assign-menu').forEach(m => m.remove());
+  const k   = tkey(s,f,r,t);
+  const cur = checks[k]?.ass || '';
+  const esc = JSON.stringify;
+  let html  = USERS.map(u => `
+    <div class="assign-mi" onclick="assignTask(${esc(s)},${esc(f)},${esc(r)},${esc(t)},${esc(u.id)})">
+      <div class="oa" style="background:${u.color}">${u.initials}</div>
+      <span>${u.name}${cur===u.id?' ✓':''}</span>
+    </div>`).join('');
+  html += `<div class="assign-mi" onclick="assignTask(${esc(s)},${esc(f)},${esc(r)},${esc(t)},'')">
+    <div class="oa" style="background:#e2e8f0;color:#718096">✕</div>
+    <span>Niemand</span>
+  </div>`;
+  const menu = document.createElement('div');
+  menu.className = 'assign-menu';
+  menu.innerHTML = html;
+  e.currentTarget.closest('.titem-right').appendChild(menu);
+  setTimeout(() => document.addEventListener('click', () => menu.remove(), {once:true}), 10);
+}
+async function assignTask(s, f, r, t, userId) {
+  const k   = tkey(s,f,r,t);
+  const cur = checks[k] || {checked:false, by:'', ass:''};
+  checks[k] = {...cur, ass: userId};
+  rebuildUI();
+  await sb.from('hausbau_checks').upsert(
+    {task_key:k, checked:cur.checked||false, checked_by:cur.by||'',
+      assigned_to:userId, updated_at:new Date().toISOString()},
     {onConflict:'task_key'}
   );
 }
@@ -319,15 +423,24 @@ function trow(s, f, r, t) {
   if (srch && !t.toLowerCase().includes(srch)) return '';
   const k   = tkey(s,f,r,t);
   const chk = checks[k]?.checked || false;
-  if (flt === 'done' && !chk) return '';
-  if (flt === 'open' &&  chk) return '';
-  const u   = userById(checks[k]?.by || '');
-  const who = chk && u ? `<div class="twho" style="background:${u.color}" title="${u.name}">${u.initials}</div>` : '';
-  const esc = JSON.stringify;
+  const ass = checks[k]?.ass || '';
+  if (flt === 'done' && !chk)              return '';
+  if (flt === 'open' &&  chk)              return '';
+  if (flt === 'mine' && ass !== (me?.id||'__')) return '';
+  const u    = userById(checks[k]?.by || '');
+  const aU   = userById(ass);
+  const who  = chk && u
+    ? `<div class="twho" style="background:${u.color}" title="Erledigt von ${u.name}">${u.initials}</div>` : '';
+  const esc  = JSON.stringify;
+  const aBtn = aU
+    ? `<div class="assign-badge" style="background:${aU.color}" title="Zugewiesen: ${aU.name}"
+         onclick="showAssignMenu(event,${esc(s)},${esc(f)},${esc(r)},${esc(t)})">${aU.initials}</div>`
+    : `<div class="assign-badge empty" title="Zuweisen"
+         onclick="showAssignMenu(event,${esc(s)},${esc(f)},${esc(r)},${esc(t)})">＋</div>`;
   return `<div class="titem${chk?' done':''}">
     <input type="checkbox" ${chk?'checked':''} onchange="toggle(${esc(s)},${esc(f)},${esc(r)},${esc(t)})">
     <label class="tlbl" onclick="this.previousElementSibling.click()">${t}</label>
-    ${who}
+    <div class="titem-right">${who}${aBtn}</div>
   </div>`;
 }
 
@@ -339,6 +452,7 @@ function roomCard(s, f, r, base) {
   const pct  = st.total ? Math.round(st.done/st.total*100) : 0;
   const coll = localStorage.getItem('cl:'+cid)==='1' ? 'coll' : '';
   const rows = all.map(t => trow(s,f,r,t)).join('');
+  if (flt === 'mine' && !rows.trim()) return '';  // leere Karten bei Mine-Filter ausblenden
   const esc  = JSON.stringify;
   return `<div class="card ${coll}" id="${cid}">
     <div class="card-hdr" onclick="toggleCard('${cid}')">
@@ -420,8 +534,7 @@ function rebuildUI() {
 
 // ── Start ─────────────────────────────────────────────────────────────────
 initModal();
-restoreUser();
-loadAll().then(subscribe);
+checkAuth();
 </script>
 </body>
 </html>
