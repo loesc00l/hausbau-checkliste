@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Einkaufsliste – Hausbau</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#2d3748;min-height:100vh}
+header{background:#2c5282;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;
+  box-shadow:0 2px 8px rgba(0,0,0,.18);position:sticky;top:0;z-index:100}
+header h1{font-size:1.25rem;font-weight:700}
+.hdr-sub{font-size:.78rem;opacity:.7;margin-top:2px}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+.prog-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.prog-wrap span{font-size:.78rem;opacity:.85}
+.prog-bar{width:160px;background:rgba(255,255,255,.25);border-radius:10px;height:7px;overflow:hidden}
+.prog-fill{height:100%;background:#68d391;border-radius:10px;transition:width .4s}
+.user-badge{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.15);
+  border-radius:20px;padding:5px 12px;cursor:pointer;border:1px solid rgba(255,255,255,.3)}
+.avatar{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:.72rem;color:#fff;flex-shrink:0}
+.uname{font-size:.8rem;font-weight:600}
+.dot{width:7px;height:7px;border-radius:50%;background:#68d391;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sidebar{position:fixed;left:0;top:56px;bottom:0;width:220px;background:#fff;
+  border-right:1px solid #e2e8f0;overflow-y:auto;padding:10px 0;z-index:50}
+.sb-sec{padding:5px 14px 2px;font-size:.66rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:1px;color:#718096;margin-top:6px}
+.sb-link{display:flex;align-items:center;gap:7px;padding:6px 14px 6px 16px;font-size:.78rem;
+  color:#4a5568;text-decoration:none;border-left:3px solid transparent;transition:all .15s}
+.sb-link:hover,.sb-link.active{background:#edf2f7;border-left-color:#3182ce;color:#2c5282;font-weight:600}
+.main{margin-left:220px;padding:22px 26px;max-width:1100px}
+.toolbar{display:flex;gap:9px;margin-bottom:18px;align-items:center;flex-wrap:wrap}
+.srch{flex:1;min-width:180px;padding:7px 12px;border:1px solid #e2e8f0;
+  border-radius:8px;font-size:.82rem;outline:none;background:#fff}
+.srch:focus{border-color:#3182ce}
+.flt{padding:6px 13px;border:1px solid #e2e8f0;border-radius:8px;font-size:.78rem;cursor:pointer;background:#fff}
+.flt.on{background:#2c5282;color:#fff;border-color:#2c5282}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:22px}
+.stat-card{background:#fff;border-radius:9px;border:1px solid #e2e8f0;padding:14px 18px;
+  box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.stat-num{font-size:1.6rem;font-weight:700;color:#2c5282}
+.stat-lbl{font-size:.75rem;color:#718096;margin-top:2px}
+.gewerk-sec{margin-bottom:24px}
+.gewerk-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px;
+  padding-bottom:8px;border-bottom:2px solid #e2e8f0}
+.gewerk-ico{font-size:1.3rem}
+.gewerk-ttl{font-size:1.1rem;font-weight:700;color:#1a365d}
+.gewerk-sum{margin-left:auto;font-size:.82rem;color:#718096;font-weight:600}
+.artikel-card{background:#fff;border-radius:9px;border:1px solid #e2e8f0;
+  margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.05);overflow:hidden}
+.artikel-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;
+  background:#f7fafc;border-bottom:1px solid #e2e8f0;cursor:pointer;user-select:none}
+.artikel-hdr:hover{background:#edf2f7}
+.artikel-name{font-size:.88rem;font-weight:700;color:#2d3748;flex:1}
+.artikel-meta{display:flex;align-items:center;gap:12px}
+.tag{font-size:.68rem;padding:2px 7px;border-radius:10px;font-weight:600}
+.tag-gekauft{background:#c6f6d5;color:#276749}
+.tag-offen{background:#fed7d7;color:#c53030}
+.tag-part{background:#fefcbf;color:#744210}
+.preis-badge{font-size:.8rem;color:#4a5568;font-weight:600}
+.link-btn{padding:3px 9px;border-radius:6px;background:#ebf4ff;color:#2b6cb0;
+  font-size:.72rem;font-weight:600;border:none;cursor:pointer;text-decoration:none;
+  display:inline-flex;align-items:center;gap:3px}
+.link-btn:hover{background:#bee3f8}
+.arr{font-size:.7rem;color:#a0aec0;transition:transform .2s;margin-left:4px}
+.artikel-card.coll .arr{transform:rotate(-90deg)}
+.artikel-body{padding:0}
+.artikel-desc{padding:8px 14px;font-size:.78rem;color:#718096;border-bottom:1px solid #f0f4f8;
+  background:#fafbfc}
+.cb-row{display:flex;align-items:center;gap:8px;padding:5px 14px;border-bottom:1px solid #f5f7fa}
+.cb-row:hover{background:#f7fafc}
+.cb-row:last-child{border-bottom:none}
+.cb-row input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3182ce;flex-shrink:0}
+.cb-lbl{font-size:.78rem;color:#4a5568;flex:1;line-height:1.4}
+.cb-row.done .cb-lbl{color:#a0aec0;text-decoration:line-through}
+.cb-sub{font-size:.68rem;color:#a0aec0;margin-top:1px}
+.menge-badge{font-size:.68rem;background:#e2e8f0;padding:1px 6px;border-radius:8px;
+  color:#4a5568;font-weight:600;white-space:nowrap}
+.loc-section{padding:4px 0 4px 28px;border-top:1px solid #edf2f7}
+.loc-hdr{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
+  color:#a0aec0;padding:6px 14px 4px;}
+.who-dot{width:14px;height:14px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:.5rem;font-weight:700;color:#fff;flex-shrink:0}
+.todo-section{background:#fff;border-radius:9px;border:1px solid #f6ad55;
+  margin-top:28px;overflow:hidden}
+.todo-hdr{background:#fffaf0;padding:12px 16px;border-bottom:1px solid #f6ad55;
+  display:flex;align-items:center;gap:8px}
+.todo-hdr h3{font-size:.95rem;font-weight:700;color:#744210}
+.todo-item{display:flex;align-items:center;gap:10px;padding:7px 16px;
+  border-bottom:1px solid #fffaf0}
+.todo-item:last-child{border-bottom:none}
+.todo-item:hover{background:#fffaf0}
+.todo-txt{font-size:.8rem;color:#4a5568;flex:1}
+.todo-add-btn{padding:4px 11px;border-radius:6px;background:#3182ce;color:#fff;
+  font-size:.72rem;font-weight:600;border:none;cursor:pointer}
+.todo-add-btn:hover{background:#2b6cb0}
+.todo-add-btn.added{background:#38a169}
+.todo-add-btn:disabled{background:#a0aec0;cursor:default}
+.sync-badge{position:fixed;bottom:14px;right:14px;background:#2c5282;color:#fff;
+  border-radius:20px;padding:6px 14px;font-size:.78rem;font-weight:600;
+  opacity:0;transition:opacity .3s;pointer-events:none;z-index:200}
+.sync-badge.show{opacity:1}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);
+  display:flex;align-items:center;justify-content:center;z-index:500}
+.modal-bg.hidden{display:none}
+.modal{background:#fff;border-radius:14px;padding:28px;width:320px;
+  box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal h2{font-size:1.1rem;margin-bottom:5px;color:#1a365d}
+.modal p{font-size:.82rem;color:#718096;margin-bottom:16px}
+.uopt{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;
+  cursor:pointer;transition:background .12s}
+.uopt:hover{background:#edf2f7}
+.oa{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:.72rem;font-weight:700;color:#fff;flex-shrink:0}
+.on{font-size:.88rem;font-weight:600;color:#2d3748}
+.hidden{display:none!important}
+.loading{padding:40px;text-align:center;color:#718096;font-size:.9rem}
+.sql-box{background:#1a1a2e;color:#68d391;padding:14px 18px;border-radius:8px;
+  font-family:monospace;font-size:.75rem;white-space:pre;overflow-x:auto;
+  margin:12px 0;border:1px solid #2d3748}
+.setup-banner{background:#ebf8ff;border:1px solid #bee3f8;border-radius:9px;
+  padding:14px 18px;margin-bottom:20px;font-size:.82rem;color:#2b6cb0}
+.setup-banner strong{color:#2c5282}
+</style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:1.6rem">🛒</span>
+  <div>
+    <h1>Einkaufsliste</h1>
+    <div class="hdr-sub">Materialien &amp; Artikel – Hausbau</div>
+  </div>
+  <div class="hdr-right">
+    <div class="prog-wrap">
+      <span id="progTxt">0 / 0 gekauft</span>
+      <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+    </div>
+    <div class="user-badge" onclick="document.getElementById('userModal').classList.remove('hidden')" id="userBadge">
+      <div class="avatar" id="hdrAvatar" style="background:#718096">?</div>
+      <span class="uname" id="hdrName">Auswählen</span>
+      <div class="dot"></div>
+    </div>
+    <a href="index.html" style="color:#fff;font-size:.78rem;opacity:.8;text-decoration:none">← Hauptseite</a>
+  </div>
+</header>
+
+<nav class="sidebar" id="sb">
+  <div class="sb-sec">Navigation</div>
+  <a class="sb-link" href="index.html">🏠 Checklisten</a>
+  <a class="sb-link active" href="einkaufsliste.html">🛒 Einkaufsliste</a>
+  <a class="sb-link" href="dashboard.html">📊 Dashboard</a>
+  <div class="sb-sec" style="margin-top:14px">Gewerke</div>
+  <div id="sbGewerke"></div>
+</nav>
+
+<main class="main">
+  <div id="setupBanner" class="setup-banner hidden">
+    <strong>⚠️ Neue Supabase-Tabelle erforderlich</strong><br>
+    Damit Checkboxen gespeichert werden, bitte einmalig in Supabase SQL Editor ausführen:
+    <div class="sql-box">CREATE TABLE IF NOT EXISTS hausbau_einkauf_checks (
+  item_key   TEXT PRIMARY KEY,
+  gekauft    BOOLEAN DEFAULT FALSE,
+  verbaut    BOOLEAN DEFAULT FALSE,
+  checked_by TEXT DEFAULT '',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE hausbau_einkauf_checks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_all_einkauf" ON hausbau_einkauf_checks;
+CREATE POLICY "anon_all_einkauf" ON hausbau_einkauf_checks
+  FOR ALL TO anon USING (true) WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE hausbau_einkauf_checks;</div>
+  </div>
+
+  <div class="stats-row" id="statsRow"></div>
+
+  <div class="toolbar">
+    <input class="srch" type="text" placeholder="🔍 Artikel suchen…" oninput="onSearch(this.value)">
+    <button class="flt on" onclick="setFlt('all',this)">Alle</button>
+    <button class="flt" onclick="setFlt('offen',this)">Noch kaufen</button>
+    <button class="flt" onclick="setFlt('gekauft',this)">Gekauft</button>
+    <button class="flt" onclick="setFlt('verbaut',this)">Verbaut</button>
+  </div>
+
+  <div id="content"><div class="loading">⏳ Daten werden geladen…</div></div>
+  <div id="todosSection"></div>
+</main>
+
+<div class="sync-badge" id="syncBadge">⟳ Synchronisiere…</div>
+
+<div class="modal-bg hidden" id="userModal">
+  <div class="modal">
+    <h2>👤 Wer bist du?</h2>
+    <p>Wähle deinen Namen, um Änderungen zuzuordnen.</p>
+    <div id="userOpts"></div>
+  </div>
+</div>
+
+<script>
+// ── Daten ────────────────────────────────────────────────────────────────
+const EINKAUF_DATA = [{"artikel":"18 HE Serverschrank","gewerk":"EDV","beschreibung":"18 HE Serverschrank, Wandgehäuse mit Glastür (BxTxH) 600 x 600 x 900mm","preis":350.0,"art":"Stück","menge_gesamt":1,"gesamt":350.0,"url":"https://www.serverschrank24.de/18-he-serverschrank-wandgehause-mit-glastur-bxtxh-600-x-600-x-1000mm.html?_gl=1*1hhsi3n*_up*MQ..*_gs*MQ..*_ga*MTU0MzcyMzAxMi4xNzcxNDUyMzk4*_ga_GH1DWXKZ6G*czE3NzE0NTIzOTgkbzEkZzAkdDE3NzE0NTI0MzYkajIyJGwwJGgxNjk4NTEzNjcy&gclid=Cj0KCQiA49XMBhDRARIsAOOKJHaOr_rH63BgCKAqjmXbNf5WcbugQbpiq_eE8MgHzg2xm7kc7526UbUaAh2mEALw_wcB&gbraid=0AAAAADhDbeaLVR1-sMcCtB01QzHl1MzSv","locations":[{"kategorie":"Netzwerk","posten":"Netzwerkschrank","gewerk":"EDV","ort":"HH_EG:Technikraum","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":350.0,"gesamt":350.0}]},{"artikel":"CELAVY LED","gewerk":"Elektro","beschreibung":"CELAVY LED Wandleuchte Wandlampe aussen - IP65 Außenlampe Aussenlampe Wand, GU10 Up Down Außenleuchte Außenwandleuchte 3000K, Aussenleuchte","preis":33.99,"art":"Stück","menge_gesamt":12,"gesamt":407.88,"url":null,"locations":[{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"ELW_EG:Terasse","prio":"niedrig","beschreibung":"","menge":4.0,"typ":"stk","preis_einzel":33.99,"gesamt":135.96},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"Drausen_EG:Garten","prio":"niedrig","beschreibung":"","menge":8.0,"typ":"stk","preis_einzel":33.99,"gesamt":271.92}]},{"artikel":"DC24V 12W Cri90 RGBCCT","gewerk":"Elektro","beschreibung":"DC24V 12W Cri90 RGBCCT 2700K-6000K Einbaustrahler Deckenspot","preis":17.71,"art":"Stück","menge_gesamt":96,"gesamt":1700.16,"url":null,"locations":[{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"ELW_EG:Bad","prio":"niedrig","beschreibung":"","menge":2.0,"typ":"stk","preis_einzel":17.71,"gesamt":35.42},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"ELW_EG:Ankleide","prio":"niedrig","beschreibung":"","menge":2.0,"typ":"stk","preis_einzel":17.71,"gesamt":35.42},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"ELW_EG:WC","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":17.71,"gesamt":17.71},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"ELW_EG:Schlafen","prio":"niedrig","beschreibung":"","menge":4.0,"typ":"stk","preis_einzel":17.71,"gesamt":70.84},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"ELW_EG:Zocken","prio":"niedrig","beschreibung":"","menge":3.0,"typ":"stk","preis_einzel":17.71,"gesamt":53.13},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"ELW_EG:Wohnzimmer","prio":"niedrig","beschreibung":"","menge":4.0,"typ":"stk","preis_einzel":17.71,"gesamt":70.84},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"ELW_EG:Küche","prio":"niedrig","beschreibung":"","menge":4.0,"typ":"stk","preis_einzel":17.71,"gesamt":70.84},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"ELW_EG:Esszimmer","prio":"niedrig","beschreibung":"","menge":4.0,"typ":"stk","preis_einzel":17.71,"gesamt":70.84},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"ELW_EG:Gang","prio":"niedrig","beschreibung":"","menge":3.0,"typ":"stk","preis_einzel":17.71,"gesamt":53.13},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_OG:Schlafen","prio":"moderat","beschreibung":"","menge":4.0,"typ":"stk","preis_einzel":17.71,"gesamt":70.84},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_OG:Bad","prio":"moderat","beschreibung":"","menge":4.0,"typ":"stk","preis_einzel":17.71,"gesamt":70.84},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_OG:Ankleide","prio":"moderat","beschreibung":"","menge":2.0,"typ":"stk","preis_einzel":17.71,"gesamt":35.42},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_OG:Leonie","prio":"moderat","beschreibung":"","menge":6.0,"typ":"stk","preis_einzel":17.71,"gesamt":106.26},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_OG:Gästezimmer","prio":"moderat","beschreibung":"","menge":6.0,"typ":"stk","preis_einzel":17.71,"gesamt":106.26},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_OG:Gäste Ankleide","prio":"moderat","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":17.71,"gesamt":17.71},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_OG:HWR","prio":"moderat","beschreibung":"","menge":4.0,"typ":"stk","preis_einzel":17.71,"gesamt":70.84},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_OG:Gang","prio":"moderat","beschreibung":"","menge":5.0,"typ":"stk","preis_einzel":17.71,"gesamt":88.55000000000001},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_OG:Treppenhaus","prio":"moderat","beschreibung":"","menge":4.0,"typ":"stk","preis_einzel":17.71,"gesamt":70.84},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_EG:Wohnzimmer","prio":"moderat","beschreibung":"","menge":6.0,"typ":"stk","preis_einzel":17.71,"gesamt":106.26},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_EG:Küche","prio":"moderat","beschreibung":"","menge":6.0,"typ":"stk","preis_einzel":17.71,"gesamt":106.26},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_EG:Esszimmer","prio":"moderat","beschreibung":"","menge":6.0,"typ":"stk","preis_einzel":17.71,"gesamt":106.26},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_EG:Treppenhaus","prio":"moderat","beschreibung":"","menge":2.0,"typ":"stk","preis_einzel":17.71,"gesamt":35.42},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_EG:Abstellraum","prio":"moderat","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":17.71,"gesamt":17.71},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_EG:Büro","prio":"moderat","beschreibung":"","menge":4.0,"typ":"stk","preis_einzel":17.71,"gesamt":70.84},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_EG:Speisekammer","prio":"moderat","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":17.71,"gesamt":17.71},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_EG:Bad","prio":"moderat","beschreibung":"","menge":4.0,"typ":"stk","preis_einzel":17.71,"gesamt":70.84},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_EG:Gang","prio":"moderat","beschreibung":"","menge":3.0,"typ":"stk","preis_einzel":17.71,"gesamt":53.13}]},{"artikel":"GIRA 021113","gewerk":"Elektro","beschreibung":"GIRA 021123 Abdeckrahmen 1f Gira E2 Anthrazit","preis":4.88,"art":"Stück","menge_gesamt":23,"gesamt":112.24,"url":"https://www.elektro-wandelt.de/GIRA-021123-Abdeckrahmen-1f-Gira-E2-Anthrazit.html?_gl=1*1yyvjct*_up*MQ..*_gs*MQ..&gclid=CjwKCAiAwNDMBhBfEiwAd7ti1EzwNl0bvnzB1e80FScd06vxdw7D8z2qbbNa9ljka4l7e2o8TtG_7xoCUWQQAvD_BwE&gbraid=0AAAAAD-dy7cu43rFb7Qb7fUUX0ou15u36","locations":[{"kategorie":"Wände","posten":"Steckdosenblende 1fach","gewerk":"Elektro","ort":"HH_EG:Küche","prio":"hoch","beschreibung":"","menge":5.0,"typ":"Stk","preis_einzel":4.88,"gesamt":24.4},{"kategorie":"Wände","posten":"Steckdosenblende 1fach","gewerk":"Elektro","ort":"HH_EG:Treppenhaus","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":4.88,"gesamt":4.88},{"kategorie":"Wände","posten":"Steckdosenblende 1fach","gewerk":"Elektro","ort":"HH_EG:Bad","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":4.88,"gesamt":9.76},{"kategorie":"Wände","posten":"Steckdosenblende 1fach","gewerk":"Elektro","ort":"HH_EG:Gang","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":4.88,"gesamt":9.76},{"kategorie":"Wände","posten":"Steckdosenblende 1fach","gewerk":"Elektro","ort":"ELW_EG:Bad","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":4.88,"gesamt":9.76},{"kategorie":"Wände","posten":"Steckdosenblende 1fach","gewerk":"Elektro","ort":"ELW_EG:WC","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":4.88,"gesamt":9.76},{"kategorie":"Wände","posten":"Steckdosenblende 1fach","gewerk":"Elektro","ort":"ELW_EG:Küche","prio":"hoch","beschreibung":"","menge":5.0,"typ":"Stk","preis_einzel":4.88,"gesamt":24.4},{"kategorie":"Wände","posten":"Steckdosenblende 1fach","gewerk":"Elektro","ort":"HH_OG:HWR","prio":"hoch","beschreibung":"","menge":4.0,"typ":"Stk","preis_einzel":4.88,"gesamt":19.52}]},{"artikel":"GIRA 021223","gewerk":"Elektro","beschreibung":"GIRA 021223 Abdeckrahmen 2f Gira E2 Anthrazit","preis":6.98,"art":"Stück","menge_gesamt":75,"gesamt":523.5,"url":"https://www.elektro-wandelt.de/GIRA-021223-Abdeckrahmen-2f-Gira-E2-Anthrazit.html?utm_source=google&utm_medium=cpc&utm_campaign=DE%20%7C%20Shopping%20%7C%20Beta%20%7C%20Gira&utm_content=Gira/Lagerartikel&trc_gcmp_id=21701253304&trc_gag_id=175889215628&trc_gad_id=713307075765&gad_source=1&gad_campaignid=21701253304&gbraid=0AAAAAD-dy7cu43rFb7Qb7fUUX0ou15u36&gclid=CjwKCAiAwNDMBhBfEiwAd7ti1EzwNl0bvnzB1e80FScd06vxdw7D8z2qbbNa9ljka4l7e2o8TtG_7xoCUWQQAvD_BwE","locations":[{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_OG:Gang","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":6.98,"gesamt":13.96},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_OG:Treppenhaus","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":6.98,"gesamt":6.98},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_DG:Dach","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":6.98,"gesamt":13.96},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_EG:Wohnzimmer","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":6.98,"gesamt":13.96},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_EG:Küche","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":6.98,"gesamt":13.96},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_EG:Esszimmer","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":6.98,"gesamt":13.96},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_EG:Treppenhaus","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":6.98,"gesamt":6.98},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_EG:Abstellraum","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":6.98,"gesamt":13.96},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_EG:Speisekammer","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":6.98,"gesamt":13.96},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_EG:Technikraum","prio":"hoch","beschreibung":"","menge":4.0,"typ":"Stk","preis_einzel":6.98,"gesamt":27.92},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_EG:Bad","prio":"hoch","beschreibung":"","menge":4.0,"typ":"Stk","preis_einzel":6.98,"gesamt":27.92},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_EG:HAR","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":6.98,"gesamt":13.96},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"ELW_EG:Bad","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":6.98,"gesamt":13.96},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"ELW_EG:Bad","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":6.98,"gesamt":13.96},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"ELW_EG:Ankleide","prio":"hoch","beschreibung":"","menge":3.0,"typ":"Stk","preis_einzel":6.98,"gesamt":20.94},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"ELW_EG:Ankleide","prio":"hoch","beschreibung":"","menge":3.0,"typ":"Stk","preis_einzel":6.98,"gesamt":20.94},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"ELW_EG:Schlafen","prio":"hoch","beschreibung":"","menge":4.0,"typ":"Stk","preis_einzel":6.98,"gesamt":27.92},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"ELW_EG:Zocken","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":6.98,"gesamt":13.96},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"ELW_EG:Wohnzimmer","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":6.98,"gesamt":6.98},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"ELW_EG:Küche","prio":"hoch","beschreibung":"","menge":3.0,"typ":"Stk","preis_einzel":6.98,"gesamt":20.94},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"ELW_EG:Esszimmer","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":6.98,"gesamt":13.96},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"ELW_EG:Gang","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":6.98,"gesamt":13.96},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"ELW_EG:Terasse","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":6.98,"gesamt":13.96},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"ELW_DG:Dachboden","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":6.98,"gesamt":13.96},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_OG:Schlafen","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":6.98,"gesamt":13.96},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_OG:Bad","prio":"hoch","beschreibung":"","menge":4.0,"typ":"Stk","preis_einzel":6.98,"gesamt":27.92},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_OG:Ankleide","prio":"hoch","beschreibung":"","menge":3.0,"typ":"Stk","preis_einzel":6.98,"gesamt":20.94},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_OG:Leonie","prio":"hoch","beschreibung":"","menge":4.0,"typ":"Stk","preis_einzel":6.98,"gesamt":27.92},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_OG:Gästezimmer","prio":"hoch","beschreibung":"","menge":4.0,"typ":"Stk","preis_einzel":6.98,"gesamt":27.92},{"kategorie":"Wände","posten":"Steckdosenblende 2fach","gewerk":"Elektro","ort":"HH_OG:HWR","prio":"hoch","beschreibung":"","menge":4.0,"typ":"Stk","preis_einzel":6.98,"gesamt":27.92}]},{"artikel":"GIRA 021323","gewerk":"Elektro","beschreibung":"GIRA 021323 Abdeckrahmen 3f Gira E2 Anthrazit","preis":12.29,"art":"Stück","menge_gesamt":0,"gesamt":0.0,"url":"https://www.elektro-wandelt.de/GIRA-021323-Abdeckrahmen-3f-Gira-E2-Anthrazit.html?_gl=1*1yyvjct*_up*MQ..*_gs*MQ..&gclid=CjwKCAiAwNDMBhBfEiwAd7ti1EzwNl0bvnzB1e80FScd06vxdw7D8z2qbbNa9ljka4l7e2o8TtG_7xoCUWQQAvD_BwE&gbraid=0AAAAAD-dy7cu43rFb7Qb7fUUX0ou15u36","locations":[]},{"artikel":"GIRA 021423","gewerk":"Elektro","beschreibung":"GIRA 021423 Abdeckrahmen 4f Gira E2 Anthrazit","preis":19.8,"art":"Stück","menge_gesamt":8,"gesamt":158.4,"url":"https://www.elektro-wandelt.de/GIRA-021423-Abdeckrahmen-4f-Gira-E2-Anthrazit.html?_gl=1*b4ykth*_up*MQ..*_gs*MQ..&gclid=CjwKCAiAwNDMBhBfEiwAd7ti1EzwNl0bvnzB1e80FScd06vxdw7D8z2qbbNa9ljka4l7e2o8TtG_7xoCUWQQAvD_BwE&gbraid=0AAAAAD-dy7cu43rFb7Qb7fUUX0ou15u36","locations":[{"kategorie":"Wände","posten":"Steckdosenblende 4fach","gewerk":"Elektro","ort":"HH_EG:Wohnzimmer","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":19.8,"gesamt":39.6},{"kategorie":"Wände","posten":"Steckdosenblende 4fach","gewerk":"Elektro","ort":"ELW_EG:Zocken","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":19.8,"gesamt":19.8},{"kategorie":"Wände","posten":"Steckdosenblende 4fach","gewerk":"Elektro","ort":"ELW_EG:Wohnzimmer","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":19.8,"gesamt":19.8},{"kategorie":"Wände","posten":"Steckdosenblende 4fach","gewerk":"Elektro","ort":"HH_OG:Schlafen","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":19.8,"gesamt":19.8},{"kategorie":"Wände","posten":"Steckdosenblende 4fach","gewerk":"Elektro","ort":"HH_OG:Leonie","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":19.8,"gesamt":39.6},{"kategorie":"Wände","posten":"Steckdosenblende 4fach","gewerk":"Elektro","ort":"HH_OG:Gästezimmer","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":19.8,"gesamt":19.8}]},{"artikel":"GIRA 245928","gewerk":"Elektro","beschreibung":"GIRA 245928 SCHUKO SP USB-Spannungsvers. 2f Typ A/C System 55 Anthrazit","preis":57.98,"art":"Stück","menge_gesamt":8,"gesamt":463.84,"url":null,"locations":[{"kategorie":"Wände","posten":"Steckdose mit USB","gewerk":"Elektro","ort":"ELW_EG:Schlafen","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":57.98,"gesamt":115.96},{"kategorie":"Wände","posten":"Steckdose mit USB","gewerk":"Elektro","ort":"HH_OG:Schlafen","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":58.98,"gesamt":117.96},{"kategorie":"Wände","posten":"Steckdose mit USB","gewerk":"Elektro","ort":"HH_OG:Leonie","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":59.98,"gesamt":59.98},{"kategorie":"Wände","posten":"Steckdose mit USB","gewerk":"Elektro","ort":"HH_OG:Gästezimmer","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":60.98,"gesamt":60.98},{"kategorie":"Wände","posten":"Steckdose mit USB","gewerk":"Elektro","ort":"HH_EG:Büro","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":61.98,"gesamt":123.96}]},{"artikel":"GIRA 418828","gewerk":"Elektro","beschreibung":"GIRA 418828 SCHUKO-Steckd. System 55 Anthrazit","preis":5.48,"art":"Stück","menge_gesamt":217,"gesamt":1189.16,"url":"https://www.elektro-wandelt.de/GIRA-418828-SCHUKO-Steckd-System-55-Anthrazit.html?_gl=1*7qba2w*_up*MQ..*_gs*MQ..&gclid=CjwKCAiAwNDMBhBfEiwAd7ti1PSu-YEMrDQDYoQ__8U3NuX7cH_hMN6zsTRjG7B5tEYq6aM_1w5haRoC0noQAvD_BwE&gbraid=0AAAAAD-dy7fFth6qaUESsXMOE63ogpfDF","locations":[{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"ELW_EG:Bad","prio":"hoch","beschreibung":"","menge":7.0,"typ":"Stk","preis_einzel":5.48,"gesamt":38.36},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"ELW_EG:Ankleide","prio":"hoch","beschreibung":"","menge":6.0,"typ":"Stk","preis_einzel":5.48,"gesamt":32.88},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"ELW_EG:WC","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":5.48,"gesamt":10.96},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"ELW_EG:Schlafen","prio":"hoch","beschreibung":"","menge":9.0,"typ":"Stk","preis_einzel":5.48,"gesamt":49.32000000000001},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"ELW_EG:Zocken","prio":"hoch","beschreibung":"","menge":10.0,"typ":"Stk","preis_einzel":5.48,"gesamt":54.800000000000004},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"ELW_EG:Wohnzimmer","prio":"hoch","beschreibung":"","menge":7.0,"typ":"Stk","preis_einzel":5.48,"gesamt":38.36},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"ELW_EG:Küche","prio":"hoch","beschreibung":"","menge":12.0,"typ":"Stk","preis_einzel":5.48,"gesamt":65.76},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"ELW_EG:Esszimmer","prio":"hoch","beschreibung":"","menge":5.0,"typ":"Stk","preis_einzel":5.48,"gesamt":27.400000000000002},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"ELW_EG:Gang","prio":"hoch","beschreibung":"","menge":4.0,"typ":"Stk","preis_einzel":5.48,"gesamt":21.92},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"ELW_EG:Terasse","prio":"hoch","beschreibung":"","menge":4.0,"typ":"Stk","preis_einzel":5.48,"gesamt":21.92},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"ELW_DG:Dachboden","prio":"hoch","beschreibung":"","menge":4.0,"typ":"Stk","preis_einzel":5.48,"gesamt":21.92},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_OG:Schlafen","prio":"hoch","beschreibung":"","menge":9.0,"typ":"Stk","preis_einzel":5.48,"gesamt":49.32000000000001},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_OG:Bad","prio":"hoch","beschreibung":"","menge":9.0,"typ":"Stk","preis_einzel":5.48,"gesamt":49.32000000000001},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_OG:Ankleide","prio":"hoch","beschreibung":"","menge":7.0,"typ":"Stk","preis_einzel":5.48,"gesamt":38.36},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_OG:Leonie","prio":"hoch","beschreibung":"","menge":18.0,"typ":"Stk","preis_einzel":5.48,"gesamt":98.64000000000001},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_OG:Gästezimmer","prio":"hoch","beschreibung":"","menge":13.0,"typ":"Stk","preis_einzel":5.48,"gesamt":71.24000000000001},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_OG:HWR","prio":"hoch","beschreibung":"","menge":13.0,"typ":"Stk","preis_einzel":5.48,"gesamt":71.24000000000001},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_OG:Gang","prio":"hoch","beschreibung":"","menge":4.0,"typ":"Stk","preis_einzel":5.48,"gesamt":21.92},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_DG:Dach","prio":"hoch","beschreibung":"","menge":4.0,"typ":"Stk","preis_einzel":5.48,"gesamt":21.92},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_OG:Treppenhaus","prio":"hoch","beschreibung":"","menge":3.0,"typ":"Stk","preis_einzel":5.48,"gesamt":16.44},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_EG:Wohnzimmer","prio":"hoch","beschreibung":"","menge":13.0,"typ":"Stk","preis_einzel":5.48,"gesamt":71.24000000000001},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_EG:Küche","prio":"hoch","beschreibung":"","menge":10.0,"typ":"Stk","preis_einzel":5.48,"gesamt":54.800000000000004},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_EG:Esszimmer","prio":"hoch","beschreibung":"","menge":5.0,"typ":"Stk","preis_einzel":5.48,"gesamt":27.400000000000002},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_EG:Treppenhaus","prio":"hoch","beschreibung":"","menge":4.0,"typ":"Stk","preis_einzel":5.48,"gesamt":21.92},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_EG:Abstellraum","prio":"hoch","beschreibung":"","menge":4.0,"typ":"Stk","preis_einzel":5.48,"gesamt":21.92},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_EG:Büro","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":5.48,"gesamt":5.48},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_EG:Speisekammer","prio":"hoch","beschreibung":"","menge":5.0,"typ":"Stk","preis_einzel":5.48,"gesamt":27.400000000000002},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_EG:Technikraum","prio":"hoch","beschreibung":"","menge":8.0,"typ":"Stk","preis_einzel":5.48,"gesamt":43.84},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_EG:Bad","prio":"hoch","beschreibung":"","menge":11.0,"typ":"Stk","preis_einzel":5.48,"gesamt":60.28},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_EG:HAR","prio":"hoch","beschreibung":"","menge":4.0,"typ":"Stk","preis_einzel":5.48,"gesamt":21.92},{"kategorie":"Wände","posten":"Steckdose","gewerk":"Elektro","ort":"HH_EG:Gang","prio":"hoch","beschreibung":"","menge":2.0,"typ":"Stk","preis_einzel":5.48,"gesamt":10.96}]},{"artikel":"Gira 245200","gewerk":"Elektro","beschreibung":"Gira 245200 Einsatz Netzwerk-Anschlussdose, Cat.6A, 2fach, Schneidklemmtechnik","preis":25.46,"art":"Stück","menge_gesamt":31,"gesamt":789.26,"url":null,"locations":[{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"ELW_EG:Ankleide","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"ELW_EG:Schlafen","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"ELW_EG:Zocken","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"ELW_EG:Wohnzimmer","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"ELW_EG:Küche","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"ELW_EG:Gang","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"ELW_EG:Terasse","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"ELW_DG:Dachboden","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_OG:Schlafen","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_OG:Bad","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_OG:Ankleide","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_OG:Leonie","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_OG:Gästezimmer","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_OG:HWR","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_OG:Gang","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_OG:Treppenhaus","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_DG:Dach","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_EG:Wohnzimmer","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_EG:Küche","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_EG:Esszimmer","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_EG:Treppenhaus","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_EG:Abstellraum","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_EG:Büro","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_EG:Technikraum","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_EG:Bad","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_EG:HAR","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"HH_EG:Gang","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"Drausen_EG:Garage","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"Drausen_EG:Werkstatt","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"Drausen_DG:Dachboden","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46},{"kategorie":"Wände","posten":"LAN Dose","gewerk":"Elektro","ort":"Drausen_EG:Garten","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":25.46,"gesamt":25.46}]},{"artikel":"MDT BE-GT2TW.02","gewerk":"Elektro","beschreibung":"MDT BE-GT2TW.02 KNX-Glastaster II Smart","preis":154.99,"art":"Stück","menge_gesamt":36,"gesamt":5579.64,"url":null,"locations":[{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"ELW_EG:Bad","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"ELW_EG:Ankleide","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"ELW_EG:WC","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"ELW_EG:Schlafen","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"ELW_EG:Zocken","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"ELW_EG:Wohnzimmer","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"ELW_EG:Küche","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"ELW_EG:Esszimmer","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"ELW_EG:Gang","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"ELW_EG:Terasse","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"ELW_DG:Dachboden","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_OG:Schlafen","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_OG:Bad","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_OG:Ankleide","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_OG:Leonie","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_OG:Gästezimmer","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_OG:Gäste Ankleide","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_OG:HWR","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_OG:Gang","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_OG:Treppenhaus","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_DG:Dach","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_EG:Wohnzimmer","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_EG:Küche","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_EG:Esszimmer","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_EG:Treppenhaus","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_EG:Abstellraum","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_EG:Büro","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_EG:Speisekammer","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_EG:Technikraum","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_EG:Bad","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_EG:HAR","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"HH_EG:Gang","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"Drausen_EG:Garage","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"Drausen_EG:Werkstatt","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"Drausen_DG:Dachboden","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99},{"kategorie":"Wände","posten":"Schalter","gewerk":"Elektro","ort":"Drausen_EG:Garten","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":154.99,"gesamt":154.99}]},{"artikel":"MDT JAL-0810M.02","gewerk":"Elektro","beschreibung":"MDT JAL-0810M.02 KNX Jalousieaktor 230 V | 8-fach, Fahrtzeitmessung","preis":42.87,"art":"Stück","menge_gesamt":20,"gesamt":857.4,"url":"https://www.voltus.de/mdt-jal-0810m-02-knx-jalousieaktor-230-v-8-fach-fahrtzeitmessung.html","locations":[{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"ELW_EG:Schlafen","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"ELW_EG:Bad","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"ELW_EG:Zocken","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"ELW_EG:Zocken","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"ELW_EG:Wohnzimmer","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"ELW_EG:Küche","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"ELW_EG:Esszimmer","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"HH_OG:Schlafen","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"HH_OG:Bad","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"HH_OG:Ankleide","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"HH_OG:HWR","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"HH_OG:Leonie","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"HH_OG:Leonie","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"HH_OG:Gästezimmer","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"HH_EG:Wohnzimmer","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"HH_EG:Küche","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"HH_EG:Esszimmer","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"HH_EG:Speisekammer","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"HH_EG:Büro","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87},{"kategorie":"Fenster","posten":"Rollosteuerung","gewerk":"Elektro","ort":"HH_EG:Bad","prio":"niedrig","beschreibung":"Jeweils einer pro Wohneinheit","menge":1.0,"typ":"Stk","preis_einzel":42.87,"gesamt":42.87}]},{"artikel":"MDT SCN-KP360K301.03","gewerk":"Elektro","beschreibung":"MDT SCN-KP360K301.03 KNX Kombi-Präsenzmelder 360° | mit Raumklima-Sensoren","preis":237.77,"art":"Stück","menge_gesamt":20,"gesamt":4755.400000000001,"url":null,"locations":[{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"Drausen_DG:Dachboden","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"Drausen_EG:Garage","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"Drausen_EG:Werkstatt","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"ELW_EG:Bad","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"ELW_EG:Küche","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"ELW_EG:Schlafen","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"ELW_EG:Zocken","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_EG:Abstellraum","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_EG:Bad","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_EG:Büro","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_EG:Esszimmer","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_EG:Gang","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_EG:Technikraum","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_OG:Bad","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_OG:Gang","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_OG:Gästezimmer","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_OG:HWR","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_OG:Leonie","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_OG:Schlafen","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_OG:Treppenhaus","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77}]},{"artikel":"MDT SCN-P360L3.03","gewerk":"Elektro","beschreibung":"MDT SCN-P360L3.03 KNX-Präsenzmelder DE | 3 Sensoren, Temperatursensor | weiß","preis":93.67,"art":"Stück","menge_gesamt":9,"gesamt":843.03,"url":null,"locations":[{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"ELW_DG:Dachboden","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":93.67,"gesamt":93.67},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"ELW_EG:Ankleide","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":237.77,"gesamt":237.77},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"ELW_EG:Gang","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":93.67,"gesamt":93.67},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"ELW_EG:WC","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":93.67,"gesamt":93.67},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_DG:Dach","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":93.67,"gesamt":93.67},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_EG:Speisekammer","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":93.67,"gesamt":93.67},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_EG:Treppenhaus","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":93.67,"gesamt":93.67},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_OG:Ankleide","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":93.67,"gesamt":93.67},{"kategorie":"Decken","posten":"Präsenzmelder","gewerk":"Elektro","ort":"HH_OG:Gäste Ankleide","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":93.67,"gesamt":93.67}]},{"artikel":"Magnat Interior IC 82","gewerk":"Elektro","beschreibung":"Magnat Interior IC 82 - Lautsprecher - 100 Watt - zweiweg - weiß","preis":76.84,"art":"Stück","menge_gesamt":15,"gesamt":1152.6000000000001,"url":null,"locations":[{"kategorie":"Decken","posten":"Lautsprecher","gewerk":"Elektro","ort":"ELW_EG:Bad","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":76.84,"gesamt":76.84},{"kategorie":"Decken","posten":"Lautsprecher","gewerk":"Elektro","ort":"ELW_EG:Schlafen","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":76.84,"gesamt":76.84},{"kategorie":"Decken","posten":"Lautsprecher","gewerk":"Elektro","ort":"ELW_EG:Zocken","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":76.84,"gesamt":76.84},{"kategorie":"Decken","posten":"Lautsprecher","gewerk":"Elektro","ort":"HH_OG:Schlafen","prio":"moderat","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":76.84,"gesamt":76.84},{"kategorie":"Decken","posten":"Lautsprecher","gewerk":"Elektro","ort":"HH_OG:Bad","prio":"moderat","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":76.84,"gesamt":76.84},{"kategorie":"Decken","posten":"Lautsprecher","gewerk":"Elektro","ort":"HH_OG:Ankleide","prio":"moderat","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":76.84,"gesamt":76.84},{"kategorie":"Decken","posten":"Lautsprecher","gewerk":"Elektro","ort":"HH_OG:Leonie","prio":"moderat","beschreibung":"","menge":3.0,"typ":"stk","preis_einzel":76.84,"gesamt":230.52},{"kategorie":"Decken","posten":"Lautsprecher","gewerk":"Elektro","ort":"HH_OG:Gästezimmer","prio":"moderat","beschreibung":"","menge":2.0,"typ":"stk","preis_einzel":76.84,"gesamt":153.68},{"kategorie":"Decken","posten":"Lautsprecher","gewerk":"Elektro","ort":"HH_OG:HWR","prio":"moderat","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":76.84,"gesamt":76.84},{"kategorie":"Decken","posten":"Lautsprecher","gewerk":"Elektro","ort":"HH_EG:Küche","prio":"moderat","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":76.84,"gesamt":76.84},{"kategorie":"Decken","posten":"Lautsprecher","gewerk":"Elektro","ort":"HH_EG:Büro","prio":"moderat","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":76.84,"gesamt":76.84},{"kategorie":"Decken","posten":"Lautsprecher","gewerk":"Elektro","ort":"HH_EG:Bad","prio":"moderat","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":76.84,"gesamt":76.84}]},{"artikel":"Metzler Türsprechanlage","gewerk":"Elektro","beschreibung":"Metzler Türsprechanlage mit Kamera | Gesichtserkennung | Touch-Display | Hausnummer beleuchtet | Live-HD-Video | Ein- und Mehrfamilien | Anthrazit | SDM10H","preis":795.0,"art":"Stück","menge_gesamt":2,"gesamt":1590.0,"url":null,"locations":[{"kategorie":"Haustür","posten":"Klingel","gewerk":"Elektro","ort":"ELW_EG:Gang","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":795.0,"gesamt":795.0},{"kategorie":"Haustür","posten":"Klingel","gewerk":"Elektro","ort":"HH_EG:Treppenhaus","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":795.0,"gesamt":795.0}]},{"artikel":"Reed Kontakt","gewerk":"Elektro","beschreibung":"40Pcs Kunststoff Draht Tür Öffnen Alarm Magnet Endschalter Home Security Detektor Alarm NC Signal Magnetische Fenster Öffnung Sensor","preis":1.5,"art":"Stück","menge_gesamt":20,"gesamt":30.0,"url":null,"locations":[{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"ELW_EG:Schlafen","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"ELW_EG:Bad","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"ELW_EG:Zocken","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"ELW_EG:Zocken","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"ELW_EG:Wohnzimmer","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"ELW_EG:Küche","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"ELW_EG:Esszimmer","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"HH_OG:Schlafen","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"HH_OG:Bad","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"HH_OG:Ankleide","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"HH_OG:HWR","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"HH_OG:Leonie","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"HH_OG:Leonie","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"HH_OG:Gästezimmer","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"HH_EG:Wohnzimmer","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"HH_EG:Küche","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"HH_EG:Esszimmer","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"HH_EG:Speisekammer","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"HH_EG:Büro","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5},{"kategorie":"Fenster","posten":"Reed Kontakt","gewerk":"Elektro","ort":"HH_EG:Bad","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1.5,"gesamt":1.5}]},{"artikel":"WT060C LED56S/840","gewerk":"Elektro","beschreibung":"Feuchtraumleuchte WT060C LED56S/840 PSU TW1 L1500 | Lampenwelt.de","preis":94.9,"art":"Stück","menge_gesamt":8,"gesamt":759.2,"url":null,"locations":[{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"ELW_DG:Dachboden","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":94.9,"gesamt":94.9},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_DG:Dach","prio":"moderat","beschreibung":"","menge":2.0,"typ":"stk","preis_einzel":94.9,"gesamt":189.8},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"HH_EG:Technikraum","prio":"moderat","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":94.9,"gesamt":94.9},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"Drausen_EG:Garage","prio":"niedrig","beschreibung":"","menge":2.0,"typ":"stk","preis_einzel":94.9,"gesamt":189.8},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"Drausen_EG:Werkstatt","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":94.9,"gesamt":94.9},{"kategorie":"Decken","posten":"Licht","gewerk":"Elektro","ort":"Drausen_DG:Dachboden","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"stk","preis_einzel":94.9,"gesamt":94.9}]},{"artikel":"KESSEL 24125S","gewerk":"Entwässerung","beschreibung":"KESSEL 24125S - Rückstaupumpanlage Pumpfix F Komfort DN 125 Für Bodenplatte - Schwarze Abdeckung","preis":3500.0,"art":"Stück","menge_gesamt":1,"gesamt":3500.0,"url":null,"locations":[{"kategorie":"Drausen","posten":"Rückstaupumpe","gewerk":"Entwässerung","ort":"Drausen_EG:Einfahrt","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":3500.0,"gesamt":3500.0}]},{"artikel":"NOBILY Rolladen-Komplett-Set","gewerk":"Fenster","beschreibung":"NOBILY Rolladen-Komplett-Set f. 60mm Achtkantwelle Mechanischer Funk Maxi-Rolladenmotor 20Nm","preis":109.8,"art":"Stück","menge_gesamt":17,"gesamt":1866.6,"url":null,"locations":[{"kategorie":"Fenster","posten":"Rolladen Motor","gewerk":"Fenster","ort":"ELW_EG:Schlafen","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":109.8,"gesamt":109.8},{"kategorie":"Fenster","posten":"Rolladen Motor","gewerk":"Fenster","ort":"ELW_EG:Bad","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":109.8,"gesamt":109.8},{"kategorie":"Fenster","posten":"Rolladen Motor","gewerk":"Fenster","ort":"ELW_EG:Zocken","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":109.8,"gesamt":109.8},{"kategorie":"Fenster","posten":"Rolladen Motor","gewerk":"Fenster","ort":"ELW_EG:Zocken","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":109.8,"gesamt":109.8},{"kategorie":"Fenster","posten":"Rolladen Motor","gewerk":"Fenster","ort":"ELW_EG:Wohnzimmer","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":109.8,"gesamt":109.8},{"kategorie":"Fenster","posten":"Rolladen Motor","gewerk":"Fenster","ort":"ELW_EG:Küche","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":109.8,"gesamt":109.8},{"kategorie":"Fenster","posten":"Rolladen Motor","gewerk":"Fenster","ort":"ELW_EG:Esszimmer","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":109.8,"gesamt":109.8},{"kategorie":"Fenster","posten":"Rolladen Motor","gewerk":"Fenster","ort":"HH_OG:Schlafen","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":109.8,"gesamt":109.8},{"kategorie":"Fenster","posten":"Rolladen Motor","gewerk":"Fenster","ort":"HH_OG:Bad","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":109.8,"gesamt":109.8},{"kategorie":"Fenster","posten":"Rolladen Motor","gewerk":"Fenster","ort":"HH_OG:Ankleide","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":109.8,"gesamt":109.8},{"kategorie":"Fenster","posten":"Rolladen Motor","gewerk":"Fenster","ort":"HH_OG:HWR","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":109.8,"gesamt":109.8},{"kategorie":"Fenster","posten":"Rolladen Motor","gewerk":"Fenster","ort":"HH_OG:Leonie","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":109.8,"gesamt":109.8},{"kategorie":"Fenster","posten":"Rolladen Motor","gewerk":"Fenster","ort":"HH_OG:Leonie","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":109.8,"gesamt":109.8},{"kategorie":"Fenster","posten":"Rolladen Motor","gewerk":"Fenster","ort":"HH_OG:Gästezimmer","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":109.8,"gesamt":109.8},{"kategorie":"Fenster","posten":"Rolladen Motor","gewerk":"Fenster","ort":"HH_EG:Speisekammer","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":109.8,"gesamt":109.8},{"kategorie":"Fenster","posten":"Rolladen Motor","gewerk":"Fenster","ort":"HH_EG:Büro","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":109.8,"gesamt":109.8},{"kategorie":"Fenster","posten":"Rolladen Motor","gewerk":"Fenster","ort":"HH_EG:Bad","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":109.8,"gesamt":109.8}]},{"artikel":"Werzalit Fensterbank exclusiv","gewerk":"Fenster","beschreibung":"","preis":0.0,"art":"Stk","menge_gesamt":11.0,"gesamt":198.22,"url":null,"locations":[{"kategorie":"Fenster","posten":"Fensterbank innen","gewerk":"Fenster","ort":"ELW_EG:Schlafen","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":18.02,"gesamt":18.02},{"kategorie":"Fenster","posten":"Fensterbank innen","gewerk":"Fenster","ort":"ELW_EG:Bad","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":18.02,"gesamt":18.02},{"kategorie":"Fenster","posten":"Fensterbank innen","gewerk":"Fenster","ort":"ELW_EG:Zocken","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":18.02,"gesamt":18.02},{"kategorie":"Fenster","posten":"Fensterbank innen","gewerk":"Fenster","ort":"ELW_EG:Zocken","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":18.02,"gesamt":18.02},{"kategorie":"Fenster","posten":"Fensterbank innen","gewerk":"Fenster","ort":"ELW_EG:Küche","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":18.02,"gesamt":18.02},{"kategorie":"Fenster","posten":"Fensterbank innen","gewerk":"Fenster","ort":"HH_OG:Ankleide","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":18.02,"gesamt":18.02},{"kategorie":"Fenster","posten":"Fensterbank innen","gewerk":"Fenster","ort":"HH_OG:HWR","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":18.02,"gesamt":18.02},{"kategorie":"Fenster","posten":"Fensterbank innen","gewerk":"Fenster","ort":"HH_OG:Treppenhaus","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":18.02,"gesamt":18.02},{"kategorie":"Fenster","posten":"Fensterbank innen","gewerk":"Fenster","ort":"HH_EG:Küche","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":18.02,"gesamt":18.02},{"kategorie":"Fenster","posten":"Fensterbank innen","gewerk":"Fenster","ort":"HH_EG:Speisekammer","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":18.02,"gesamt":18.02},{"kategorie":"Fenster","posten":"Fensterbank innen","gewerk":"Fenster","ort":"HH_EG:Treppenhaus","prio":"moderat","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":18.02,"gesamt":18.02}]},{"artikel":"Latexfarbe","gewerk":"Malerarbeiten","beschreibung":"Epodex Latexfarbe für Innenbereich | Latex Paint - Polarweiss","preis":0.6925,"art":"m²","menge_gesamt":1902,"gesamt":1317.135,"url":"https://www.epodex.com/de/produkt/latex-paint-latexfarbe/?glanzgrad=matt&menge=400m-48kg&farbe=polarweiss","locations":[{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"ELW_EG:Bad","prio":"moderat","beschreibung":"","menge":42.0,"typ":"qm","preis_einzel":0.6925,"gesamt":29.085},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"ELW_EG:Ankleide","prio":"moderat","beschreibung":"","menge":23.0,"typ":"qm","preis_einzel":0.6925,"gesamt":15.9275},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"ELW_EG:WC","prio":"moderat","beschreibung":"","menge":28.0,"typ":"qm","preis_einzel":0.6925,"gesamt":19.39},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"ELW_EG:Schlafen","prio":"moderat","beschreibung":"","menge":71.0,"typ":"qm","preis_einzel":0.6925,"gesamt":49.1675},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"ELW_EG:Zocken","prio":"moderat","beschreibung":"","menge":44.0,"typ":"qm","preis_einzel":0.6925,"gesamt":30.47},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"ELW_EG:Wohnzimmer","prio":"moderat","beschreibung":"","menge":113.0,"typ":"qm","preis_einzel":0.6925,"gesamt":78.2525},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"ELW_EG:Küche","prio":"moderat","beschreibung":"","menge":50.0,"typ":"qm","preis_einzel":0.6925,"gesamt":34.625},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"ELW_EG:Esszimmer","prio":"moderat","beschreibung":"","menge":53.0,"typ":"qm","preis_einzel":0.6925,"gesamt":36.7025},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"ELW_EG:Gang","prio":"moderat","beschreibung":"","menge":48.0,"typ":"qm","preis_einzel":0.6925,"gesamt":33.24},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"ELW_EG:Terasse","prio":"moderat","beschreibung":"","menge":69.0,"typ":"qm","preis_einzel":0.6925,"gesamt":47.7825},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_OG:Schlafen","prio":"hoch","beschreibung":"","menge":64.0,"typ":"qm","preis_einzel":0.6925,"gesamt":44.32},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_OG:Bad","prio":"hoch","beschreibung":"","menge":59.0,"typ":"qm","preis_einzel":0.6925,"gesamt":40.8575},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_OG:Ankleide","prio":"hoch","beschreibung":"","menge":53.0,"typ":"qm","preis_einzel":0.6925,"gesamt":36.7025},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_OG:Leonie","prio":"hoch","beschreibung":"","menge":109.0,"typ":"qm","preis_einzel":0.6925,"gesamt":75.4825},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_OG:Gästezimmer","prio":"hoch","beschreibung":"","menge":73.0,"typ":"qm","preis_einzel":0.6925,"gesamt":50.5525},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_OG:Gäste Ankleide","prio":"hoch","beschreibung":"","menge":19.0,"typ":"qm","preis_einzel":0.6925,"gesamt":13.1575},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_OG:HWR","prio":"hoch","beschreibung":"","menge":61.0,"typ":"qm","preis_einzel":0.6925,"gesamt":42.2425},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_OG:Gang","prio":"hoch","beschreibung":"","menge":42.0,"typ":"qm","preis_einzel":0.6925,"gesamt":29.085},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_OG:Treppenhaus","prio":"hoch","beschreibung":"","menge":62.0,"typ":"qm","preis_einzel":0.6925,"gesamt":42.935},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_EG:Wohnzimmer","prio":"hoch","beschreibung":"","menge":66.0,"typ":"qm","preis_einzel":0.6925,"gesamt":45.705},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_EG:Küche","prio":"hoch","beschreibung":"","menge":51.0,"typ":"qm","preis_einzel":0.6925,"gesamt":35.3175},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_EG:Esszimmer","prio":"hoch","beschreibung":"","menge":97.0,"typ":"qm","preis_einzel":0.6925,"gesamt":67.1725},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_EG:Treppenhaus","prio":"hoch","beschreibung":"","menge":65.0,"typ":"qm","preis_einzel":0.6925,"gesamt":45.0125},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_EG:Abstellraum","prio":"hoch","beschreibung":"","menge":40.0,"typ":"qm","preis_einzel":0.6925,"gesamt":27.7},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_EG:Büro","prio":"hoch","beschreibung":"","menge":65.0,"typ":"qm","preis_einzel":0.6925,"gesamt":45.0125},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_EG:Speisekammer","prio":"hoch","beschreibung":"","menge":31.0,"typ":"qm","preis_einzel":0.6925,"gesamt":21.4675},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_EG:Technikraum","prio":"hoch","beschreibung":"","menge":60.0,"typ":"qm","preis_einzel":0.6925,"gesamt":41.55},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_EG:Bad","prio":"hoch","beschreibung":"","menge":57.0,"typ":"qm","preis_einzel":0.6925,"gesamt":39.472500000000004},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_EG:HAR","prio":"hoch","beschreibung":"","menge":24.0,"typ":"qm","preis_einzel":0.6925,"gesamt":16.62},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"HH_EG:Gang","prio":"hoch","beschreibung":"","menge":40.0,"typ":"qm","preis_einzel":0.6925,"gesamt":27.7},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"Drausen_EG:Garage","prio":"moderat","beschreibung":"","menge":156.0,"typ":"qm","preis_einzel":0.6925,"gesamt":108.03},{"kategorie":"Wände","posten":"Farbe","gewerk":"Malerarbeiten","ort":"Drausen_EG:Werkstatt","prio":"moderat","beschreibung":"","menge":67.0,"typ":"qm","preis_einzel":0.6925,"gesamt":46.3975}]},{"artikel":"Metzler Mülltonnenbox","gewerk":"Tor","beschreibung":"Metzler Mülltonnenbox | 5er | 240l | Anthrazit RAL 7016 | aus Stahl | mit Sichtstreifen | rostfrei & massiv | Türgriff mit Schloss","preis":1971.89,"art":"Stück","menge_gesamt":1,"gesamt":1971.89,"url":"https://edelstahl-tuerklingel.de/metzler-muelltonnenbox-5er-240l-anthrazit-ral-7016-aus-stahl-mit-sichtstreifen-rostfrei-massiv-tuergriff-mit-schloss","locations":[{"kategorie":"Drausen","posten":"Mülltonnenbox","gewerk":"Tor","ort":"Drausen_EG:Tor","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":1971.89,"gesamt":1971.89}]},{"artikel":"Metzler Paketbox XL","gewerk":"Tor","beschreibung":"Metzler Paketbox XL personalisiert mit Gravur | Paketkasten rostfrei | RAL 7016 Anthrazit | Bispo Max 2","preis":593.97,"art":"Stück","menge_gesamt":1,"gesamt":593.97,"url":"https://edelstahl-tuerklingel.de/metzler-paketbox-xl-personalisiert-mit-gravur-paketkasten-rostfrei-ral-7016-anthrazit-bispo-max-2","locations":[{"kategorie":"Drausen","posten":"Paketbox","gewerk":"Tor","ort":"Drausen_EG:Tor","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":593.97,"gesamt":593.97}]},{"artikel":"Metzler Standbriefkasten","gewerk":"Tor","beschreibung":"Metzler Standbriefkasten mit Video-Türsprechanlage für Zweifamilienhaus SDM10 | Touch-Display | Anthrazit RAL7016","preis":2390.0,"art":"Stück","menge_gesamt":1,"gesamt":2390.0,"url":"https://edelstahl-tuerklingel.de/metzler-standbriefkasten-mit-video-tuersprechanlage-fuer-zweifamilienhaus-sdm10-touch-display-anthrazit-ral7016","locations":[{"kategorie":"Drausen","posten":"Klingel","gewerk":"Tor","ort":"Drausen_EG:Tor","prio":"niedrig","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":2390.0,"gesamt":2390.0}]},{"artikel":"Entravia Schiebetürsystem","gewerk":"Tür","beschreibung":"Entravia Schiebetürsystem Simple-Pocket Standard","preis":399.0,"art":"Stück","menge_gesamt":3,"gesamt":1197.0,"url":"https://www.bauhaus.info/schiebetueren/entravia-schiebetuersystem-simple-pocket-standard/p/32156340?utm_source=google&utm_medium=ssa&utm_id=20146549426_147550318685&cid=SSAGoo20146549426_147550318685&gad_source=1&gad_campaignid=20146549426&gbraid=0AAAAADNytnJ4_S2H7Y2LKteJYrEBpDywf&gclid=CjwKCAiAwNDMBhBfEiwAd7ti1CKLv7MMGqkKnnSL0LBcXn-0WlzHpoXrSa-drGA-dyVhDlQOhW-J_xoCybIQAvD_BwE","locations":[{"kategorie":"Innentüren","posten":"Schiebetür","gewerk":"Tür","ort":"ELW_EG:Ankleide","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":399.0,"gesamt":399.0},{"kategorie":"Innentüren","posten":"Schiebetür","gewerk":"Tür","ort":"HH_OG:Schlafen","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":399.0,"gesamt":399.0},{"kategorie":"Innentüren","posten":"Schiebetür","gewerk":"Tür","ort":"HH_OG:Bad","prio":"hoch","beschreibung":"","menge":1.0,"typ":"Stk","preis_einzel":399.0,"gesamt":399.0}]}];
+
+const USERS = [{"id":"lucian","name":"Lucian","initials":"L","color":"#2c5282"},{"id":"simona","name":"Simona","initials":"S","color":"#744210"},{"id":"justin","name":"Justin","initials":"J","color":"#276749"}];
+const SB_URL = atob("aHR0cHM6Ly9raW1vZ3N3Y29udXhpanN6cXBxei5zdXBhYmFzZS5jbw==");
+const SB_KEY = atob("ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW10cGJXOW5jM2RqYjI1MWVHbHFjM3B4Y0hGNklpd2ljbTlzWlNJNkluTmxjblpwWTJWZmNtOXNaU0lzSW1saGRDSTZNVGMzTkRFNU56WXlOU3dpWlhod0lqb3lNRGc1Tnpjek5qSTFmUS56bXFtX2pSRzBYbkR3LVJhNE9mZkpYbENyVlBuSXlOWC0wRzA2ZVRzZG9B");
+
+const GEWERK_ICONS = {
+  'Elektro':'⚡','EDV':'🖥️','Fenster':'🪟','Entwässerung':'💧',
+  'Malerarbeiten':'🎨','Tor':'🚪','Tür':'🚪'
+};
+
+// ── Supabase ─────────────────────────────────────────────────────────────
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+// ── State ─────────────────────────────────────────────────────────────────
+let checks   = {};   // item_key -> {gekauft, verbaut, checked_by}
+let me       = null;
+let flt      = 'all';
+let srch     = '';
+let activeGw = null;
+
+// ── Keys ──────────────────────────────────────────────────────────────────
+const kaufKey   = a     => 'k:' + a;
+const verbKey   = (a,o) => 'v:' + a + '||' + o;
+const slug      = s     => s.replace(/[^a-zA-Z0-9]/g,'_');
+
+// ── Nutzerwahl ────────────────────────────────────────────────────────────
+function initModal() {
+  const c = document.getElementById('userOpts');
+  c.innerHTML = '';
+  USERS.forEach(u => {
+    const d = document.createElement('div');
+    d.className = 'uopt';
+    d.innerHTML = `<div class="oa" style="background:${u.color}">${u.initials}</div><span class="on">${u.name}</span>`;
+    d.onclick = () => pickUser(u);
+    c.appendChild(d);
+  });
+}
+function pickUser(u) {
+  me = u;
+  localStorage.setItem('hb_user', u.id);
+  document.getElementById('hdrAvatar').textContent = u.initials;
+  document.getElementById('hdrAvatar').style.background = u.color;
+  document.getElementById('hdrName').textContent = u.name;
+  document.getElementById('userModal').classList.add('hidden');
+}
+function restoreUser() {
+  const u = USERS.find(x => x.id === localStorage.getItem('hb_user'));
+  if (u) pickUser(u);
+  else document.getElementById('userModal').classList.remove('hidden');
+}
+
+// ── Sync-Flash ────────────────────────────────────────────────────────────
+let syncTimer;
+function flash() {
+  const el = document.getElementById('syncBadge');
+  el.classList.add('show');
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => el.classList.remove('show'), 1600);
+}
+
+// ── Daten laden ───────────────────────────────────────────────────────────
+async function loadAll() {
+  const {data, error} = await sb.from('hausbau_einkauf_checks').select('*');
+  if (error) {
+    if (error.code === '42P01') {
+      document.getElementById('setupBanner').classList.remove('hidden');
+    }
+    checks = {};
+    rebuildUI();
+    return;
+  }
+  checks = {};
+  (data || []).forEach(r => { checks[r.item_key] = {gekauft: r.gekauft, verbaut: r.verbaut, by: r.checked_by}; });
+  rebuildUI();
+}
+
+// ── Echtzeit ──────────────────────────────────────────────────────────────
+function subscribe() {
+  sb.channel('einkauf_changes')
+    .on('postgres_changes', {event:'*', schema:'public', table:'hausbau_einkauf_checks'}, p => {
+      const row = p.new || p.old;
+      if (!row) return;
+      if (p.eventType === 'DELETE') delete checks[row.item_key];
+      else checks[row.item_key] = {gekauft: row.gekauft, verbaut: row.verbaut, by: row.checked_by};
+      flash(); rebuildUI();
+    })
+    .subscribe();
+}
+
+// ── Toggle Gekauft ────────────────────────────────────────────────────────
+async function toggleGekauft(artikel) {
+  if (!me) { document.getElementById('userModal').classList.remove('hidden'); return; }
+  const k    = kaufKey(artikel);
+  const prev = checks[k]?.gekauft || false;
+  const next = !prev;
+  checks[k]  = {...(checks[k]||{}), gekauft: next, by: next ? me.id : ''};
+  flash(); rebuildUI();
+  await sb.from('hausbau_einkauf_checks').upsert(
+    {item_key:k, gekauft:next, verbaut:checks[k]?.verbaut||false,
+      checked_by: next?me.id:'', updated_at:new Date().toISOString()},
+    {onConflict:'item_key'}
+  );
+}
+
+// ── Toggle Verbaut (pro Ort) ───────────────────────────────────────────────
+async function toggleVerbaut(artikel, ort) {
+  if (!me) { document.getElementById('userModal').classList.remove('hidden'); return; }
+  const k    = verbKey(artikel, ort);
+  const prev = checks[k]?.verbaut || false;
+  const next = !prev;
+  checks[k]  = {...(checks[k]||{}), verbaut: next, by: next ? me.id : ''};
+  flash(); rebuildUI();
+  await sb.from('hausbau_einkauf_checks').upsert(
+    {item_key:k, gekauft:checks[k]?.gekauft||false, verbaut:next,
+      checked_by: next?me.id:'', updated_at:new Date().toISOString()},
+    {onConflict:'item_key'}
+  );
+}
+
+// ── Als Todo hinzufügen ────────────────────────────────────────────────────
+async function addTodo(artikel, gewerk, btnEl) {
+  if (!me) { document.getElementById('userModal').classList.remove('hidden'); return; }
+  btnEl.disabled = true;
+  const taskText = '🛒 Kaufen: ' + artikel;
+  await sb.from('hausbau_custom_tasks').upsert(
+    {section:'Einkaufsliste', floor:gewerk, room:'Bestellungen',
+      task_text:taskText, added_by:me.id,
+      sort_order:0, created_at:new Date().toISOString()},
+    {onConflict:'section,floor,room,task_text'}
+  );
+  btnEl.textContent = '✓ Hinzugefügt';
+  btnEl.classList.add('added');
+}
+
+// ── Filter ────────────────────────────────────────────────────────────────
+function setFlt(f, btn) {
+  flt = f;
+  document.querySelectorAll('.flt').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  rebuildUI();
+}
+function onSearch(v) { srch = v.toLowerCase(); rebuildUI(); }
+
+// ── Stats ──────────────────────────────────────────────────────────────────
+function buildStats() {
+  const items = EINKAUF_DATA;
+  let totalGesamt=0, countGekauft=0, countVerbaut=0, totalLocs=0, verbautLocs=0;
+  items.forEach(i => {
+    totalGesamt += i.gesamt||0;
+    if (checks[kaufKey(i.artikel)]?.gekauft) countGekauft++;
+    totalLocs += i.locations.length;
+    i.locations.forEach(l => {
+      if (checks[verbKey(i.artikel,l.ort)]?.verbaut) { countVerbaut++; verbautLocs++; }
+    });
+  });
+  const pct = items.length ? Math.round(countGekauft/items.length*100) : 0;
+  document.getElementById('progTxt').textContent = countGekauft + ' / ' + items.length + ' gekauft';
+  document.getElementById('progFill').style.width = pct + '%';
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${items.length}</div><div class="stat-lbl">Artikel gesamt</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:#38a169">${countGekauft}</div><div class="stat-lbl">Gekauft</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:#3182ce">${verbautLocs} / ${totalLocs}</div><div class="stat-lbl">Positionen verbaut</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:#744210">${totalGesamt.toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:0})} €</div><div class="stat-lbl">Gesamtbudget</div></div>
+  `;
+}
+
+// ── UI aufbauen ────────────────────────────────────────────────────────────
+function rebuildUI() {
+  buildStats();
+  buildSidebar();
+
+  const items = EINKAUF_DATA.filter(i => {
+    if (srch && !i.artikel.toLowerCase().includes(srch) && !i.beschreibung.toLowerCase().includes(srch)) return false;
+    if (activeGw && i.gewerk !== activeGw) return false;
+    if (flt === 'offen') return !checks[kaufKey(i.artikel)]?.gekauft;
+    if (flt === 'gekauft') return !!checks[kaufKey(i.artikel)]?.gekauft;
+    if (flt === 'verbaut') {
+      return i.locations.length > 0 && i.locations.every(l => checks[verbKey(i.artikel,l.ort)]?.verbaut);
+    }
+    return true;
+  });
+
+  // Gruppe nach Gewerk
+  const groups = {};
+  items.forEach(i => { (groups[i.gewerk] ??= []).push(i); });
+
+  let html = '';
+  for (const [gw, gwItems] of Object.entries(groups)) {
+    const gwSum = gwItems.reduce((s,i) => s+i.gesamt, 0);
+    const icon = GEWERK_ICONS[gw] || '📦';
+    html += `<div class="gewerk-sec" id="gw_${slug(gw)}">
+      <div class="gewerk-hdr">
+        <span class="gewerk-ico">${icon}</span>
+        <span class="gewerk-ttl">${gw}</span>
+        <span class="gewerk-sum">${gwSum.toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:0})} €</span>
+      </div>`;
+    gwItems.forEach(item => {
+      html += buildArtikelCard(item);
+    });
+    html += '</div>';
+  }
+
+  document.getElementById('content').innerHTML = html || '<div class="loading">Keine Artikel gefunden.</div>';
+  buildTodosSection();
+}
+
+function buildArtikelCard(item) {
+  const kk = kaufKey(item.artikel);
+  const isGekauft = !!checks[kk]?.gekauft;
+  const verbautCount = item.locations.filter(l => checks[verbKey(item.artikel,l.ort)]?.verbaut).length;
+  const allVerbaut = item.locations.length > 0 && verbautCount === item.locations.length;
+
+  let statusTag;
+  if (allVerbaut) statusTag = '<span class="tag tag-gekauft">✓ Verbaut</span>';
+  else if (isGekauft) statusTag = '<span class="tag tag-part">🔧 Zu verbauen</span>';
+  else statusTag = '<span class="tag tag-offen">Noch kaufen</span>';
+
+  const linkBtn = item.url
+    ? `<a class="link-btn" href="${item.url}" target="_blank" rel="noopener">🔗 Link</a>`
+    : '';
+
+  const preisStr = item.preis ? item.preis.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €/' + item.art : '';
+  const gesamtStr = item.gesamt ? item.gesamt.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €' : '';
+
+  const esc = v => v.replace(/'/g,"\'").replace(/"/g,'&quot;');
+
+  let locs = '';
+  if (item.locations.length > 0) {
+    locs = '<div class="loc-hdr">Einbauorte</div>';
+    item.locations.forEach(l => {
+      const vk = verbKey(item.artikel, l.ort);
+      const isV = !!checks[vk]?.verbaut;
+      const who = checks[vk]?.by ? USERS.find(u=>u.id===checks[vk].by) : null;
+      const whoIcon = who ? `<div class="who-dot" style="background:${who.color}">${who.initials}</div>` : '';
+      locs += `<div class="cb-row${isV?' done':''}">
+        <input type="checkbox" ${isV?'checked':''} onchange="toggleVerbaut('${esc(item.artikel)}','${esc(l.ort)}')" title="Verbaut markieren">
+        <div class="cb-lbl">
+          <div>${l.ort.replace('_',' ').replace(':',' › ')}</div>
+          <div class="cb-sub">${l.posten}${l.beschreibung?' · '+l.beschreibung:''} · ${l.menge % 1 === 0 ? l.menge : l.menge.toFixed(1)} ${l.typ}</div>
+        </div>
+        <span class="menge-badge">${l.menge % 1 === 0 ? l.menge : l.menge.toFixed(1)} ${l.typ}</span>
+        ${whoIcon}
+      </div>`;
+    });
+  }
+
+  return `<div class="artikel-card" id="ac_${slug(item.artikel)}">
+    <div class="artikel-hdr" onclick="toggleCard('${slug(item.artikel)}')">
+      <input type="checkbox" ${isGekauft?'checked':''}
+        onclick="event.stopPropagation();toggleGekauft('${esc(item.artikel)}')"
+        title="Als gekauft markieren"
+        style="width:16px;height:16px;cursor:pointer;accent-color:#38a169;flex-shrink:0">
+      <span class="artikel-name">${item.artikel}</span>
+      <div class="artikel-meta">
+        ${statusTag}
+        ${preisStr ? '<span class="preis-badge">'+preisStr+'</span>' : ''}
+        ${gesamtStr ? '<span class="preis-badge" style="color:#2c5282;font-weight:700">∑ '+gesamtStr+'</span>' : ''}
+        ${item.menge_gesamt ? '<span class="menge-badge">'+item.menge_gesamt+' '+item.art+'</span>' : ''}
+        ${linkBtn}
+        <span class="arr">▼</span>
+      </div>
+    </div>
+    <div class="artikel-body" id="body_${slug(item.artikel)}">
+      ${item.beschreibung ? '<div class="artikel-desc">'+item.beschreibung+'</div>' : ''}
+      <div class="loc-section">${locs}</div>
+      <div style="padding:6px 14px 10px;border-top:1px solid #f0f4f8">
+        <button class="todo-add-btn" id="tbtn_${slug(item.artikel)}"
+          onclick="addTodo('${esc(item.artikel)}','${esc(item.gewerk)}',this)">
+          + Als Todo zur Hauptseite
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleCard(id) {
+  const card = document.getElementById('ac_' + id);
+  const body = document.getElementById('body_' + id);
+  if (!card || !body) return;
+  card.classList.toggle('coll');
+  body.style.display = card.classList.contains('coll') ? 'none' : '';
+}
+
+// ── Sidebar Gewerke ────────────────────────────────────────────────────────
+function buildSidebar() {
+  const gewerke = [...new Set(EINKAUF_DATA.map(i => i.gewerk))].sort();
+  let html = '';
+  gewerke.forEach(gw => {
+    const icon = GEWERK_ICONS[gw] || '📦';
+    const cnt  = EINKAUF_DATA.filter(i => i.gewerk === gw).length;
+    html += `<a class="sb-link${activeGw===gw?' active':''}"
+      onclick="filterGewerk(event,'${gw.replace(/'/g,"\'")}')"
+      href="#gw_${slug(gw)}">
+      ${icon} ${gw} <span style="margin-left:auto;font-size:.65rem;color:#a0aec0">${cnt}</span>
+    </a>`;
+  });
+  html += `<a class="sb-link${!activeGw?' active':''}"
+    onclick="filterGewerk(event,null)" href="#" style="margin-top:4px">
+    📋 Alle Gewerke
+  </a>`;
+  document.getElementById('sbGewerke').innerHTML = html;
+}
+
+function filterGewerk(e, gw) {
+  e.preventDefault();
+  activeGw = gw;
+  rebuildUI();
+  if (gw) {
+    const el = document.getElementById('gw_' + slug(gw));
+    if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+}
+
+// ── Vorgeschlagene Todos ────────────────────────────────────────────────────
+function buildTodosSection() {
+  const offene = EINKAUF_DATA.filter(i => !checks[kaufKey(i.artikel)]?.gekauft);
+  if (offene.length === 0) {
+    document.getElementById('todosSection').innerHTML = '';
+    return;
+  }
+  let rows = offene.map(i => `
+    <div class="todo-item">
+      <span style="font-size:1rem">🛒</span>
+      <div class="todo-txt">
+        <strong>${i.artikel}</strong> – ${i.gewerk}
+        ${i.gesamt ? '<span style="color:#718096;font-size:.75rem"> · ∑ '+i.gesamt.toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:0})+' €</span>' : ''}
+      </div>
+      <button class="todo-add-btn" onclick="addTodo('${i.artikel.replace(/'/g,"\'")}',${JSON.stringify(i.gewerk)},this)">
+        + Hauptseite
+      </button>
+    </div>`).join('');
+  document.getElementById('todosSection').innerHTML = `
+    <div class="todo-section">
+      <div class="todo-hdr">
+        <span style="font-size:1.2rem">📋</span>
+        <h3>Noch zu kaufen – vorgeschlagene Todos (${offene.length})</h3>
+      </div>
+      ${rows}
+    </div>`;
+}
+
+// ── Init ────────────────────────────────────────────────────────────────────
+initModal();
+restoreUser();
+loadAll().then(subscribe);
+</script>
+</body>
+</html>
