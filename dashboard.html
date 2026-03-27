@@ -172,9 +172,40 @@ main{padding:24px 28px;max-width:1400px;margin:0 auto}
   .kpi-row{grid-template-columns:repeat(2,1fr)}
   .grid2,.grid3{grid-template-columns:1fr}
 }
+@media(max-width:680px){.sidebar{display:none}header,#root,.filter-bar{margin-left:0}}
+/* ── Sidebar Navigation ───────────────────────────────────────────── */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:210px;background:#1a2f4e;
+  border-right:1px solid rgba(255,255,255,.08);overflow-y:auto;z-index:200;
+  display:flex;flex-direction:column}
+.sb-logo{padding:16px 16px 10px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sb-logo h2{font-size:.88rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
+.sb-logo p{font-size:.68rem;color:rgba(255,255,255,.45);margin-top:2px}
+.sb-sec{padding:8px 12px 3px;font-size:.62rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:1.2px;color:rgba(255,255,255,.35);margin-top:4px}
+.sb-link{display:flex;align-items:center;gap:9px;padding:7px 14px 7px 16px;
+  font-size:.78rem;color:rgba(255,255,255,.65);text-decoration:none;
+  border-left:3px solid transparent;transition:all .15s;cursor:pointer}
+.sb-link:hover{background:rgba(255,255,255,.07);color:#fff}
+.sb-link.active{background:rgba(255,255,255,.1);border-left-color:#68d391;
+  color:#fff;font-weight:600}
+.sb-divider{height:1px;background:rgba(255,255,255,.08);margin:6px 12px}
+header,#root,.filter-bar{margin-left:210px}
 </style>
 </head>
 <body>
+<nav class="sidebar">
+  <div class="sb-logo"><h2>🏗️ Hausbau</h2><p>Projekt-Übersicht</p></div>
+  <div class="sb-sec">Navigation</div>
+  <a class="sb-link" href="index.html">🏠 Checklisten</a>
+  <a class="sb-link" href="einkaufsliste.html">🛒 Einkaufsliste</a>
+  <a class="sb-link active" href="dashboard.html">📊 Dashboard</a>
+  <div class="sb-divider"></div>
+  <div class="sb-sec">Bereiche</div>
+  <a class="sb-link" id="sbAll"  onclick="sbFilter('all')" href="#">🌐 Alle Bereiche</a>
+  <a class="sb-link" id="sbHH"   onclick="sbFilter('HH - Haupthaus')" href="#">🏡 Haupthaus</a>
+  <a class="sb-link" id="sbELW"  onclick="sbFilter('ELW - Einliegerwohnung')" href="#">🏘️ Einliegerwohnung</a>
+  <a class="sb-link" id="sbDrau" onclick="sbFilter('Drausen - Aussenbereich')" href="#">🌳 Außenbereich</a>
+</nav>
 
 <div class="pw-modal hidden" id="pwModal">
   <div class="pw-box">
@@ -692,6 +723,21 @@ function subscribeRealtime() {
     {event:'*',schema:'public',table:'hausbau_checks'},
     () => loadDashboard()
   ).subscribe();
+}
+
+// ── Sidebar Bereichs-Filter ────────────────────────────────
+function sbFilter(sec) {
+  ['sbAll','sbHH','sbELW','sbDrau'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  });
+  const map = {'all':'sbAll','HH - Haupthaus':'sbHH',
+    'ELW - Einliegerwohnung':'sbELW','Drausen - Aussenbereich':'sbDrau'};
+  const el = document.getElementById(map[sec]);
+  if (el) el.classList.add('active');
+  const tab = [...document.querySelectorAll('.filter-tab')]
+    .find(b => b.getAttribute('onclick')?.includes(JSON.stringify(sec)));
+  if (tab) setSection(sec, tab); else setSection(sec, null);
 }
 
 // ── Start ─────────────────────────────────────────────────────────────────
