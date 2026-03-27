@@ -546,4 +546,19 @@ function buildTodosSection() {
       </button>
     </div>`).join('');
   document.getElementById('todosSection').innerHTML = `
-    <d
+    <div class="todo-section">
+      <div class="todo-hdr">
+        <span style="font-size:1.2rem">📋</span>
+        <h3>Noch zu kaufen – vorgeschlagene Todos (${offene.length})</h3>
+      </div>
+      ${rows}
+    </div>`;
+}
+
+// ── Init ────────────────────────────────────────────────────────────────────
+initModal();
+restoreUser();
+loadAll().then(subscribe);
+</script>
+</body>
+</html>
