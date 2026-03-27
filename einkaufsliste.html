@@ -9,7 +9,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#2d3748;min-height:100vh}
 header{background:#2c5282;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;
-  box-shadow:0 2px 8px rgba(0,0,0,.18);position:sticky;top:0;z-index:100}
+  box-shadow:0 2px 8px rgba(0,0,0,.18);position:sticky;top:0;z-index:300}
 header h1{font-size:1.25rem;font-weight:700}
 .hdr-sub{font-size:.78rem;opacity:.7;margin-top:2px}
 .hdr-right{margin-left:auto;display:flex;align-items:center;gap:14px}
@@ -24,14 +24,22 @@ header h1{font-size:1.25rem;font-weight:700}
 .uname{font-size:.8rem;font-weight:600}
 .dot{width:7px;height:7px;border-radius:50%;background:#68d391;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.sidebar{position:fixed;left:0;top:56px;bottom:0;width:220px;background:#fff;
-  border-right:1px solid #e2e8f0;overflow-y:auto;padding:10px 0;z-index:50}
-.sb-sec{padding:5px 14px 2px;font-size:.66rem;font-weight:700;text-transform:uppercase;
-  letter-spacing:1px;color:#718096;margin-top:6px}
-.sb-link{display:flex;align-items:center;gap:7px;padding:6px 14px 6px 16px;font-size:.78rem;
-  color:#4a5568;text-decoration:none;border-left:3px solid transparent;transition:all .15s}
-.sb-link:hover,.sb-link.active{background:#edf2f7;border-left-color:#3182ce;color:#2c5282;font-weight:600}
-.main{margin-left:220px;padding:22px 26px;max-width:1100px}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:210px;background:#1a2f4e;
+  border-right:1px solid rgba(255,255,255,.08);overflow-y:auto;padding:0;z-index:200;
+  display:flex;flex-direction:column}
+.sb-logo{padding:16px 16px 10px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sb-logo h2{font-size:.88rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
+.sb-logo p{font-size:.68rem;color:rgba(255,255,255,.45);margin-top:2px}
+.sb-sec{padding:8px 12px 3px;font-size:.62rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:1.2px;color:rgba(255,255,255,.35);margin-top:4px}
+.sb-link{display:flex;align-items:center;gap:9px;padding:7px 14px 7px 16px;
+  font-size:.78rem;color:rgba(255,255,255,.65);text-decoration:none;
+  border-left:3px solid transparent;transition:all .15s;cursor:pointer}
+.sb-link:hover{background:rgba(255,255,255,.07);color:#fff}
+.sb-link.active{background:rgba(255,255,255,.1);border-left-color:#68d391;
+  color:#fff;font-weight:600}
+.sb-divider{height:1px;background:rgba(255,255,255,.08);margin:6px 12px}
+.main{margin-left:210px;padding:22px 26px;max-width:1100px}
 .toolbar{display:flex;gap:9px;margin-bottom:18px;align-items:center;flex-wrap:wrap}
 .srch{flex:1;min-width:180px;padding:7px 12px;border:1px solid #e2e8f0;
   border-radius:8px;font-size:.82rem;outline:none;background:#fff}
@@ -144,16 +152,20 @@ header h1{font-size:1.25rem;font-weight:700}
       <span class="uname" id="hdrName">Auswählen</span>
       <div class="dot"></div>
     </div>
-    <a href="index.html" style="color:#fff;font-size:.78rem;opacity:.8;text-decoration:none">← Hauptseite</a>
   </div>
 </header>
 
 <nav class="sidebar" id="sb">
+  <div class="sb-logo">
+    <h2>🏗️ Hausbau</h2>
+    <p>Projekt-Übersicht</p>
+  </div>
   <div class="sb-sec">Navigation</div>
   <a class="sb-link" href="index.html">🏠 Checklisten</a>
   <a class="sb-link active" href="einkaufsliste.html">🛒 Einkaufsliste</a>
   <a class="sb-link" href="dashboard.html">📊 Dashboard</a>
-  <div class="sb-sec" style="margin-top:14px">Gewerke</div>
+  <div class="sb-divider"></div>
+  <div class="sb-sec">Gewerke</div>
   <div id="sbGewerke"></div>
 </nav>
 
@@ -534,19 +546,4 @@ function buildTodosSection() {
       </button>
     </div>`).join('');
   document.getElementById('todosSection').innerHTML = `
-    <div class="todo-section">
-      <div class="todo-hdr">
-        <span style="font-size:1.2rem">📋</span>
-        <h3>Noch zu kaufen – vorgeschlagene Todos (${offene.length})</h3>
-      </div>
-      ${rows}
-    </div>`;
-}
-
-// ── Init ────────────────────────────────────────────────────────────────────
-initModal();
-restoreUser();
-loadAll().then(subscribe);
-</script>
-</body>
-</html>
+    <d
