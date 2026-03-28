@@ -585,7 +585,7 @@ function buildTodosSection() {
     </div>`;
 }
 
-// ── Mobile Sidebar ────────────────────────────────────────────────────────
+// ── Mobile Sidebar ─────────────────────────────────────────────────────────
 function mobToggle() {
   document.getElementById('sb').classList.toggle('open');
   document.getElementById('mobOv').classList.toggle('vis');
@@ -595,13 +595,11 @@ function mobToggle() {
 async function loadCustomArtikel() {
   const {data, error} = await sb.from('hausbau_einkauf_artikel').select('*').order('created_at');
   if (error) { console.warn('Custom-Artikel Ladefehler:', error.message); return; }
-  // Remove previously injected custom entries
   const toRemove = EINKAUF_DATA.filter(i => i._custom);
   toRemove.forEach(i => {
     const idx = EINKAUF_DATA.indexOf(i);
     if (idx >= 0) EINKAUF_DATA.splice(idx, 1);
   });
-  // Inject new custom entries (skip duplicates that already exist)
   const existingNames = new Set(EINKAUF_DATA.map(i => i.artikel.toLowerCase()));
   (data || []).forEach(r => {
     if (existingNames.has(r.artikel.toLowerCase())) return;
@@ -611,15 +609,10 @@ async function loadCustomArtikel() {
       ? orte.map(ort => ({ort, menge: 1, gesamt: r.preis || 0, gewerk: r.gewerk || ''}))
       : [{ort: 'Manuell', menge: 1, gesamt: r.preis || 0, gewerk: r.gewerk || ''}];
     EINKAUF_DATA.push({
-      artikel:     r.artikel,
-      gewerk:      r.gewerk || 'Sonstiges',
-      beschreibung:r.beschreibung || '',
-      url:         r.url || '',
-      preis:       r.preis || 0,
-      art:         r.art || 'Stück',
-      locations,
-      gesamt:      r.preis || 0,
-      _custom:     true
+      artikel: r.artikel, gewerk: r.gewerk || 'Sonstiges',
+      beschreibung: r.beschreibung || '', url: r.url || '',
+      preis: r.preis || 0, art: r.art || 'Stueck',
+      locations, gesamt: r.preis || 0, _custom: true
     });
   });
   rebuildUI();
@@ -633,7 +626,7 @@ function subscribeCustomArtikel() {
     .subscribe();
 }
 
-// ── Modal: Neuer Artikel ─────────────────────────────────────────────────────
+// ── Modal: Neuer Artikel ──────────────────────────────────────────────────────
 function openArtikelModal() {
   document.getElementById('artikelModal').classList.remove('hidden');
   setTimeout(() => document.getElementById('artArtikel').focus(), 50);
@@ -646,10 +639,10 @@ function clearArtikelForm() {
   ['artArtikel','artBeschreibung','artUrl'].forEach(id => {
     document.getElementById(id).value = '';
   });
-  document.getElementById('artOrte').value = '';
   document.getElementById('artPreis').value = '0';
   document.getElementById('artGewerk').value = 'Elektro';
-  document.getElementById('artArt').value = 'Stück';
+  document.getElementById('artArt').value = 'Stueck';
+  document.getElementById('orteGrid').querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
 }
 
 async function saveNewArtikel() {
@@ -660,13 +653,14 @@ async function saveNewArtikel() {
   const url          = document.getElementById('artUrl').value.trim();
   const preis        = parseFloat(document.getElementById('artPreis').value) || 0;
   const art          = document.getElementById('artArt').value;
-  const orteRaw      = document.getElementById('artOrte').value.trim();
-  const orte         = orteRaw ? orteRaw.split('\n').map(s=>s.trim()).filter(Boolean) : [];
-  const added_by     = me || 'unbekannt';
+  const orte = Array.from(
+    document.getElementById('orteGrid').querySelectorAll('input[type=checkbox]:checked')
+  ).map(cb => cb.value);
+  const added_by = me || 'unbekannt';
 
   const btn = document.getElementById('artSaveBtn');
   btn.disabled = true;
-  btn.textContent = 'Speichern…';
+  btn.textContent = 'Speichern...';
 
   const {error} = await sb.from('hausbau_einkauf_artikel').upsert(
     {artikel, gewerk, beschreibung, url, preis, art,
@@ -682,7 +676,7 @@ async function saveNewArtikel() {
   await loadCustomArtikel();
 }
 
-// ── Init ─────────────────────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────────────────
 loadAll().then(() => {
   subscribe();
   loadCustomArtikel();
@@ -690,28 +684,26 @@ loadAll().then(() => {
 });
 </script>
 
-<!-- ── Neuer Artikel Modal ─────────────────────────────────────────────────── -->
 <style>
 .am-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:800;
   display:flex;align-items:center;justify-content:center}
 .am-bg.hidden{display:none}
-.am-box{background:#fff;border-radius:12px;padding:26px 30px;width:min(520px,94vw);
-  box-shadow:0 8px 40px rgba(0,0,0,.28);position:relative;max-height:92vh;overflow-y:auto}
-.am-box h2{margin-bottom:16px;font-size:1.1rem;color:#2c5282;display:flex;align-items:center;gap:8px}
-.am-f{margin-bottom:13px}
-.am-f label{display:block;font-size:.75rem;font-weight:700;color:#4a5568;
+.am-box{background:#fff;border-radius:12px;padding:24px 28px;width:min(560px,95vw);
+  box-shadow:0 8px 40px rgba(0,0,0,.28);position:relative;max-height:94vh;overflow-y:auto}
+.am-box h2{margin-bottom:14px;font-size:1.08rem;color:#2c5282;display:flex;align-items:center;gap:8px}
+.am-f{margin-bottom:12px}
+.am-f label{display:block;font-size:.74rem;font-weight:700;color:#4a5568;
   margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
-.am-f input,.am-f select,.am-f textarea{width:100%;padding:7px 10px;border:1px solid #cbd5e0;
-  border-radius:6px;font-size:.9rem;color:#2d3748;background:#f7fafc}
-.am-f input:focus,.am-f select:focus,.am-f textarea:focus{outline:none;border-color:#4299e1;background:#fff}
-.am-f textarea{resize:vertical;min-height:64px}
-.am-row{display:flex;gap:12px}
+.am-f input,.am-f select{width:100%;padding:7px 10px;border:1px solid #cbd5e0;
+  border-radius:6px;font-size:.88rem;color:#2d3748;background:#f7fafc}
+.am-f input:focus,.am-f select:focus{outline:none;border-color:#4299e1;background:#fff}
+.am-row{display:flex;gap:10px}
 .am-row .am-f{flex:1}
-.am-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
-.am-cancel{padding:7px 18px;border-radius:6px;border:1px solid #cbd5e0;
-  background:#fff;color:#4a5568;cursor:pointer;font-size:.88rem}
-.am-save{padding:7px 20px;border-radius:6px;border:none;
-  background:#2c5282;color:#fff;cursor:pointer;font-size:.88rem;font-weight:700}
+.am-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+.am-cancel{padding:7px 16px;border-radius:6px;border:1px solid #cbd5e0;
+  background:#fff;color:#4a5568;cursor:pointer;font-size:.87rem}
+.am-save{padding:7px 18px;border-radius:6px;border:none;
+  background:#2c5282;color:#fff;cursor:pointer;font-size:.87rem;font-weight:700}
 .am-save:hover{background:#2a4a7f}
 .am-x{position:absolute;top:12px;right:14px;background:none;border:none;
   font-size:1.3rem;cursor:pointer;color:#a0aec0;line-height:1}
@@ -722,16 +714,26 @@ loadAll().then(() => {
   justify-content:center;transition:background .15s,transform .15s}
 .fab-new:hover{background:#c53030;transform:scale(1.07)}
 @media(max-width:700px){.fab-new{bottom:84px}}
+.orte-grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid #cbd5e0;
+  border-radius:6px;background:#f7fafc;max-height:200px;overflow-y:auto}
+.orte-col{padding:8px 10px}
+.orte-col+.orte-col{border-left:1px solid #e2e8f0}
+.orte-grp-hdr{font-size:.68rem;font-weight:700;color:#4299e1;text-transform:uppercase;
+  letter-spacing:.06em;margin:6px 0 4px;padding-bottom:2px;border-bottom:1px solid #e2e8f0}
+.orte-grp-hdr:first-child{margin-top:0}
+.orte-cb{display:flex;align-items:center;gap:5px;padding:2px 0;
+  cursor:pointer;font-size:.84rem;color:#2d3748;white-space:nowrap}
+.orte-cb input[type=checkbox]{width:13px;height:13px;accent-color:#2c5282;
+  cursor:pointer;flex-shrink:0}
+.orte-cb:hover{color:#2c5282}
 </style>
 
-<!-- Floating + Button -->
 <button class="fab-new" onclick="openArtikelModal()" title="Neuen Artikel anlegen">+</button>
 
-<!-- Modal -->
 <div class="am-bg hidden" id="artikelModal">
   <div class="am-box">
-    <button class="am-x" onclick="closeArtikelModal()">✕</button>
-    <h2>➕ Neuen Artikel anlegen</h2>
+    <button class="am-x" onclick="closeArtikelModal()">x</button>
+    <h2>+ Neuen Artikel anlegen</h2>
 
     <div class="am-f">
       <label>Artikelname *</label>
@@ -742,36 +744,26 @@ loadAll().then(() => {
       <div class="am-f">
         <label>Gewerk</label>
         <select id="artGewerk">
-          <option>Elektro</option>
-          <option>EDV</option>
-          <option>Fenster</option>
-          <option>Entwässerung</option>
-          <option>Malerarbeiten</option>
-          <option>Tor</option>
-          <option>Tür</option>
-          <option>Sanitär</option>
-          <option>Heizung</option>
-          <option>Böden</option>
-          <option>Fliesen</option>
+          <option>Elektro</option><option>EDV</option><option>Fenster</option>
+          <option>Entwasserung</option><option>Malerarbeiten</option>
+          <option>Tor</option><option>Tuer</option><option>Sanitaer</option>
+          <option>Heizung</option><option>Boeden</option><option>Fliesen</option>
           <option>Sonstiges</option>
         </select>
       </div>
       <div class="am-f">
         <label>Art / Einheit</label>
         <select id="artArt">
-          <option>Stück</option>
-          <option>m²</option>
-          <option>lm</option>
-          <option>Set</option>
-          <option>kg</option>
-          <option>l</option>
+          <option value="Stueck">Stueck</option><option value="m2">m2</option>
+          <option value="lm">lm</option><option value="Set">Set</option>
+          <option value="kg">kg</option><option value="l">l</option>
         </select>
       </div>
     </div>
 
     <div class="am-row">
       <div class="am-f">
-        <label>Preis (€)</label>
+        <label>Preis (EUR)</label>
         <input type="number" id="artPreis" value="0" min="0" step="0.01">
       </div>
       <div class="am-f">
@@ -782,12 +774,61 @@ loadAll().then(() => {
 
     <div class="am-f">
       <label>Beschreibung (optional)</label>
-      <input type="text" id="artBeschreibung" placeholder="Kurze Beschreibung oder Bestellnummer">
+      <input type="text" id="artBeschreibung" placeholder="Kurze Beschreibung">
     </div>
 
     <div class="am-f">
-      <label>Einbauorte (einer pro Zeile)</label>
-      <textarea id="artOrte" placeholder="Küche&#10;Bad OG&#10;Gäste-WC"></textarea>
+      <label>Einbauorte</label>
+      <div class="orte-grid" id="orteGrid">
+        <div class="orte-col">
+          <div class="orte-grp-hdr">HH - Erdgeschoss</div>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Abstellraum"> Abstellraum</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Bad"> Bad</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Buero"> Buero</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Esszimmer"> Esszimmer</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Gang"> Gang</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:HAR"> HAR</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Kueche"> Kueche</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Speisekammer"> Speisekammer</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Technikraum"> Technikraum</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Treppenhaus"> Treppenhaus</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Wohnzimmer"> Wohnzimmer</label>
+          <div class="orte-grp-hdr">HH - Obergeschoss</div>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:Ankleide"> Ankleide</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:Bad"> Bad</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:Gang"> Gang</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:GaesteAnkleide"> Gaeste Ankleide</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:Gaestezimmer"> Gaestezimmer</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:HWR"> HWR</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:Leonie"> Leonie</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:Schlafen"> Schlafen</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:Treppenhaus"> Treppenhaus</label>
+          <div class="orte-grp-hdr">HH - Dach</div>
+          <label class="orte-cb"><input type="checkbox" value="HH_DG:Dach"> Dach</label>
+        </div>
+        <div class="orte-col">
+          <div class="orte-grp-hdr">ELW - Erdgeschoss</div>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Ankleide"> Ankleide</label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Bad"> Bad</label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Esszimmer"> Esszimmer</label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Gang"> Gang</label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Kueche"> Kueche</label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Schlafen"> Schlafen</label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Terasse"> Terasse</label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:WC"> WC</label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Wohnzimmer"> Wohnzimmer</label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Zocken"> Zocken</label>
+          <div class="orte-grp-hdr">ELW - Dach</div>
+          <label class="orte-cb"><input type="checkbox" value="ELW_DG:Dachboden"> Dachboden</label>
+          <div class="orte-grp-hdr">Aussen</div>
+          <label class="orte-cb"><input type="checkbox" value="Drausen_DG:Dachboden"> Dachboden</label>
+          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Einfahrt"> Einfahrt</label>
+          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Garage"> Garage</label>
+          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Garten"> Garten</label>
+          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Tor"> Tor</label>
+          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Werkstatt"> Werkstatt</label>
+        </div>
+      </div>
     </div>
 
     <div class="am-foot">
