@@ -571,3 +571,36 @@ function buildTodosSection() {
     return;
   }
   let rows = offene.map(i => `
+    <div class="todo-item">
+      <span style="font-size:1rem">🛒</span>
+      <div class="todo-txt">
+        <strong>${i.artikel}</strong> – ${i.gewerk}
+        ${i.gesamt ? '<span style="color:#718096;font-size:.75rem"> · ∑ '+i.gesamt.toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:0})+' €</span>' : ''}
+      </div>
+      <button class="todo-add-btn" onclick="addTodo('${i.artikel.replace(/'/g,"\\'")}',${JSON.stringify(i.gewerk)},this)">
+        + Hauptseite
+      </button>
+    </div>`).join('');
+  document.getElementById('todosSection').innerHTML = `
+    <div class="todo-section">
+      <div class="todo-hdr">
+        <span style="font-size:1.2rem">📋</span>
+        <h3>Noch zu kaufen – vorgeschlagene Todos (${offene.length})</h3>
+      </div>
+      ${rows}
+    </div>`;
+}
+
+// ── Init ────────────────────────────────────────────────────────────────────
+initModal();
+restoreUser();
+loadAll().then(subscribe);
+
+// ── Mobile Sidebar ────────────────────────────────────────────────────────
+function mobToggle() {
+  document.getElementById('sb').classList.toggle('open');
+  document.getElementById('mobOv').classList.toggle('vis');
+}
+</script>
+</body>
+</html>
