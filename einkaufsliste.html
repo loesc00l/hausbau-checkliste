@@ -520,6 +520,8 @@ function buildArtikelCard(item) {
         ${gesamtStr ? '<span class="preis-badge" style="color:#2c5282;font-weight:700">∑ '+gesamtStr+'</span>' : ''}
         ${effMenge(item) > 0 ? '<span class="menge-badge">'+effMenge(item)+' '+item.art+'</span>' : ''}
         ${linkBtn}
+        <button class="edit-btn" onclick="event.stopPropagation();editArtikel('${esc(item.artikel)}')" title="Bearbeiten">✏️</button>
+        ${item._custom ? '<button class="del-btn" onclick="event.stopPropagation();deleteArtikel(''+esc(item.artikel)+'')" title="Löschen">🗑️</button>' : ''}
         <span class="arr">▼</span>
       </div>
     </div>
@@ -617,9 +619,10 @@ async function loadCustomArtikel() {
     const idx = EINKAUF_DATA.indexOf(i);
     if (idx >= 0) EINKAUF_DATA.splice(idx, 1);
   });
-  const existingNames = new Set(EINKAUF_DATA.map(i => i.artikel.toLowerCase()));
+  // Custom-Artikel können Excel-Einträge überschreiben (Edit-Funktion)
   (data || []).forEach(r => {
-    if (existingNames.has(r.artikel.toLowerCase())) return;
+    const existIdx = EINKAUF_DATA.findIndex(i => i.artikel.toLowerCase() === r.artikel.toLowerCase());
+    if (existIdx >= 0) EINKAUF_DATA.splice(existIdx, 1);
     let orte = [];
     try { orte = JSON.parse(r.orte || '[]'); } catch(e) {}
     const typ = r.art || 'Stk';
@@ -663,7 +666,52 @@ function subscribeCustomArtikel() {
 }
 
 // ── Modal: Neuer Artikel ──────────────────────────────────────────────────────
-function openArtikelModal() {
+
+// ── Artikel bearbeiten / löschen ─────────────────────────────────────────────
+function editArtikel(artikelName) {
+  const item = EINKAUF_DATA.find(i => i.artikel === artikelName);
+  if (!item) return;
+
+  // Modal-Titel anpassen
+  document.querySelector('#artikelModal h2').textContent = '✏️ Artikel bearbeiten';
+
+  // Felder befüllen
+  document.getElementById('artArtikel').value       = item.artikel;
+  document.getElementById('artBeschreibung').value  = item.beschreibung || '';
+  document.getElementById('artUrl').value           = item.url || '';
+  document.getElementById('artPreis').value         = item.preis || 0;
+
+  // Gewerk
+  const gwSel = document.getElementById('artGewerk');
+  const gwOpt = Array.from(gwSel.options).find(o => o.value === item.gewerk || o.text === item.gewerk);
+  if (gwOpt) gwSel.value = gwOpt.value; else gwSel.value = gwSel.options[0].value;
+
+  // Art/Einheit
+  const artSel = document.getElementById('artArt');
+  const artOpt = Array.from(artSel.options).find(o => o.value === item.art || o.text === item.art);
+  if (artOpt) artSel.value = artOpt.value; else artSel.value = artSel.options[0].value;
+
+  // Einbauorte-Checkboxen: alle zurücksetzen, dann passende setzen
+  const existingOrte = new Set(item.locations.map(l => l.ort));
+  document.getElementById('orteGrid').querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.checked = existingOrte.has(cb.value);
+  });
+
+  openArtikelModal();
+}
+
+async function deleteArtikel(artikelName) {
+  if (!confirm('Artikel "' + artikelName + '" wirklich löschen?')) return;
+  const {error} = await sb.from('hausbau_einkauf_artikel').delete().eq('artikel', artikelName);
+  if (error) { alert('Fehler: ' + error.message); return; }
+  await loadCustomArtikel();
+}
+
+function openArtikelModal(isNew) {
+  if (isNew !== false) {
+    document.querySelector('#artikelModal h2').textContent = '+ Neuen Artikel anlegen';
+    clearArtikelForm();
+  }
   document.getElementById('artikelModal').classList.remove('hidden');
   setTimeout(() => document.getElementById('artArtikel').focus(), 50);
 }
@@ -744,6 +792,13 @@ loadAll().then(() => {
 .am-x{position:absolute;top:12px;right:14px;background:none;border:none;
   font-size:1.3rem;cursor:pointer;color:#a0aec0;line-height:1}
 .am-x:hover{color:#4a5568}
+.edit-btn{background:none;border:none;cursor:pointer;font-size:.82rem;
+  color:#a0aec0;padding:3px 6px;border-radius:4px;line-height:1;flex-shrink:0}
+.edit-btn:hover{color:#2c5282;background:#ebf4ff}
+.del-btn{background:none;border:none;cursor:pointer;font-size:.82rem;
+  color:#a0aec0;padding:3px 6px;border-radius:4px;line-height:1;flex-shrink:0}
+.del-btn:hover{color:#e53e3e;background:#fff5f5}
+.am-box h2{margin-bottom:14px;font-size:1.08rem;color:#2c5282;display:flex;align-items:center;gap:8px}
 .fab-new{position:fixed;bottom:22px;right:22px;width:52px;height:52px;border-radius:50%;
   background:#e53e3e;color:#fff;border:none;font-size:1.6rem;cursor:pointer;
   box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:600;display:flex;align-items:center;
@@ -764,7 +819,7 @@ loadAll().then(() => {
 .orte-cb:hover{color:#2c5282}
 </style>
 
-<button class="fab-new" onclick="openArtikelModal()" title="Neuen Artikel anlegen">+</button>
+<button class="fab-new" onclick="openArtikelModal(true)" title="Neuen Artikel anlegen">+</button>
 
 <div class="am-bg hidden" id="artikelModal">
   <div class="am-box">
