@@ -392,7 +392,7 @@ function buildStats() {
   const items = EINKAUF_DATA;
   let totalGesamt=0, countGekauft=0, countVerbaut=0, totalLocs=0, verbautLocs=0;
   items.forEach(i => {
-    totalGesamt += i.gesamt||0;
+    totalGesamt += effGesamt(i);
     if (checks[kaufKey(i.artikel)]?.gekauft) countGekauft++;
     totalLocs += i.locations.length;
     i.locations.forEach(l => {
@@ -432,7 +432,7 @@ function rebuildUI() {
 
   let html = '';
   for (const [gw, gwItems] of Object.entries(groups)) {
-    const gwSum = gwItems.reduce((s,i) => s+i.gesamt, 0);
+    const gwSum = gwItems.reduce((s,i) => s+effGesamt(i), 0);
     const icon = GEWERK_ICONS[gw] || '📦';
     html += `<div class="gewerk-sec" id="gw_${slug(gw)}">
       <div class="gewerk-hdr">
@@ -448,6 +448,22 @@ function rebuildUI() {
 
   document.getElementById('content').innerHTML = html || '<div class="loading">Keine Artikel gefunden.</div>';
   buildTodosSection();
+}
+
+// ── Effektive Gesamt/Menge (Fallback wenn Excel-Spalte leer) ─────────────────
+function effGesamt(item) {
+  if (item.gesamt > 0) return item.gesamt;
+  // Berechne aus Locations: l.gesamt > 0 verwenden, sonst menge * preis_einzel
+  const fromLocs = item.locations.reduce((s, l) =>
+    s + (l.gesamt > 0 ? l.gesamt : (l.menge || 0) * (l.preis_einzel || 0)), 0);
+  if (fromLocs > 0) return fromLocs;
+  // Letzter Fallback: Stückpreis * Anzahl Locations
+  return (item.preis || 0) * Math.max(item.locations.length, 1);
+}
+function effMenge(item) {
+  if (item.menge_gesamt > 0) return item.menge_gesamt;
+  const fromLocs = item.locations.reduce((s, l) => s + (l.menge || 0), 0);
+  return fromLocs > 0 ? fromLocs : item.locations.length;
 }
 
 function buildArtikelCard(item) {
@@ -466,7 +482,8 @@ function buildArtikelCard(item) {
     : '';
 
   const preisStr = item.preis ? item.preis.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €/' + item.art : '';
-  const gesamtStr = item.gesamt ? item.gesamt.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €' : '';
+  const _eg = effGesamt(item);
+  const gesamtStr = _eg > 0 ? _eg.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €' : '';
 
   const esc = v => v.replace(/'/g,"\'").replace(/"/g,'&quot;');
 
@@ -501,7 +518,7 @@ function buildArtikelCard(item) {
         ${statusTag}
         ${preisStr ? '<span class="preis-badge">'+preisStr+'</span>' : ''}
         ${gesamtStr ? '<span class="preis-badge" style="color:#2c5282;font-weight:700">∑ '+gesamtStr+'</span>' : ''}
-        ${item.menge_gesamt ? '<span class="menge-badge">'+item.menge_gesamt+' '+item.art+'</span>' : ''}
+        ${effMenge(item) > 0 ? '<span class="menge-badge">'+effMenge(item)+' '+item.art+'</span>' : ''}
         ${linkBtn}
         <span class="arr">▼</span>
       </div>
