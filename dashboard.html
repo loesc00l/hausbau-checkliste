@@ -185,14 +185,30 @@ main{padding:24px 28px;max-width:1400px;margin:0 auto}
   .mob-btn{display:flex}
   .sidebar{transform:translateX(-220px);transition:transform .25s ease}
   .sidebar.open{transform:translateX(0)}
-  header,#root,.filter-bar{margin-left:0!important}
-  header{padding:12px 14px}
-  header h1{font-size:.95rem}
+  header,#root,.filter-bar,main{margin-left:0!important}
+  header{padding:10px 14px}
+  header h1{font-size:.9rem}
+  .hdr-sub{display:none}
   .hdr-right .dash-link{display:none}
-  main{padding:14px 12px}
-  .kpi-row{grid-template-columns:1fr 1fr;gap:10px}
-  .filter-bar{padding:8px 10px;gap:6px;flex-wrap:wrap}
-  .filter-tab{font-size:.7rem;padding:5px 10px}
+  main{padding:10px}
+  .kpi-row{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .kpi{padding:12px}
+  .kpi-val{font-size:1.6rem}
+  .kpi-lbl{font-size:.64rem}
+  .grid2,.grid3{grid-template-columns:1fr}
+  .filter-bar{padding:8px 10px;gap:5px;flex-wrap:wrap}
+  .filter-tab{font-size:.68rem;padding:5px 8px}
+  .card{padding:14px}
+  .card-title{font-size:.82rem}
+  .act-task,.floor-lbl{font-size:.75rem}
+  .sec-block-hdr{padding:10px 12px}
+  .sec-block-body{padding:10px 12px}
+  .task-row{padding:6px 0;gap:8px}
+  .task-txt{font-size:.78rem}
+}
+@media(max-width:400px){
+  .kpi-row{grid-template-columns:1fr}
+  .kpi-val{font-size:1.8rem}
 }
 /* ── Sidebar Navigation ───────────────────────────────────────────── */
 .sidebar{position:fixed;left:0;top:0;bottom:0;width:210px;background:#1a2f4e;
