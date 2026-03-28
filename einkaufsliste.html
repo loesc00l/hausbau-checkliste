@@ -627,20 +627,22 @@ async function loadCustomArtikel() {
     try { orte = JSON.parse(r.orte || '[]'); } catch(e) {}
     const typ = r.art || 'Stk';
     const preisEinzel = r.preis || 0;
-    const locList = orte.length ? orte : ['Manuell'];
-    const locations = locList.map(ort => ({
+    // Backward-compat: orte kann String-Array (alt) oder {ort,menge}-Array (neu) sein
+    const rawList = orte.length ? orte : [{ort: 'Manuell', menge: 1}];
+    const locList = rawList.map(o => typeof o === 'string' ? {ort: o, menge: 1} : o);
+    const locations = locList.map(({ort, menge: locMenge}) => ({
       ort,
-      menge:        1,
+      menge:        locMenge || 1,
       typ,
       preis_einzel: preisEinzel,
-      gesamt:       preisEinzel,
+      gesamt:       (locMenge || 1) * preisEinzel,
       gewerk:       r.gewerk || '',
       kategorie:    '',
       posten:       r.artikel,
       prio:         '',
       beschreibung: r.beschreibung || ''
     }));
-    const mengeGesamt = locList.length;
+    const mengeGesamt = locList.reduce((s, l) => s + (l.menge || 1), 0);
     EINKAUF_DATA.push({
       artikel:      r.artikel,
       gewerk:       r.gewerk || 'Sonstiges',
@@ -692,9 +694,13 @@ function editArtikel(artikelName) {
   if (artOpt) artSel.value = artOpt.value; else artSel.value = artSel.options[0].value;
 
   // Einbauorte-Checkboxen: alle zurücksetzen, dann passende setzen
-  const existingOrte = new Set(item.locations.map(l => l.ort));
+  const orteMap = {};
+  item.locations.forEach(l => { orteMap[l.ort] = l.menge || 1; });
   document.getElementById('orteGrid').querySelectorAll('input[type=checkbox]').forEach(cb => {
-    cb.checked = existingOrte.has(cb.value);
+    const checked = cb.value in orteMap;
+    cb.checked = checked;
+    const mengeInp = cb.closest('label').querySelector('.orte-menge');
+    if (mengeInp) mengeInp.value = checked ? (orteMap[cb.value] || 1) : 1;
   });
 
   openArtikelModal(false); // false = nicht leeren
@@ -727,6 +733,7 @@ function clearArtikelForm() {
   document.getElementById('artGewerk').value = 'Elektro';
   document.getElementById('artArt').value = 'Stueck';
   document.getElementById('orteGrid').querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
+  document.getElementById('orteGrid').querySelectorAll('.orte-menge').forEach(inp => inp.value = 1);
 }
 
 async function saveNewArtikel() {
@@ -739,7 +746,10 @@ async function saveNewArtikel() {
   const art          = document.getElementById('artArt').value;
   const orte = Array.from(
     document.getElementById('orteGrid').querySelectorAll('input[type=checkbox]:checked')
-  ).map(cb => cb.value);
+  ).map(cb => ({
+    ort:   cb.value,
+    menge: parseFloat(cb.closest('label').querySelector('.orte-menge')?.value) || 1
+  }));
   const added_by = me || 'unbekannt';
 
   const btn = document.getElementById('artSaveBtn');
@@ -817,6 +827,10 @@ loadAll().then(() => {
 .orte-cb input[type=checkbox]{width:13px;height:13px;accent-color:#2c5282;
   cursor:pointer;flex-shrink:0}
 .orte-cb:hover{color:#2c5282}
+.orte-menge{width:42px;padding:1px 4px;border:1px solid #cbd5e0;border-radius:4px;
+  font-size:.78rem;text-align:center;background:#fff;color:#2d3748;
+  opacity:0;pointer-events:none;transition:opacity .15s}
+.orte-cb input[type=checkbox]:checked ~ .orte-menge{opacity:1;pointer-events:auto}
 </style>
 
 <button class="fab-new" onclick="openArtikelModal(true)" title="Neuen Artikel anlegen">+</button>
@@ -873,51 +887,51 @@ loadAll().then(() => {
       <div class="orte-grid" id="orteGrid">
         <div class="orte-col">
           <div class="orte-grp-hdr">HH - Erdgeschoss</div>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Abstellraum"> Abstellraum</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Bad"> Bad</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Buero"> Buero</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Esszimmer"> Esszimmer</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Gang"> Gang</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:HAR"> HAR</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Kueche"> Kueche</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Speisekammer"> Speisekammer</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Technikraum"> Technikraum</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Treppenhaus"> Treppenhaus</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Wohnzimmer"> Wohnzimmer</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Abstellraum"> Abstellraum <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Bad"> Bad <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Buero"> Buero <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Esszimmer"> Esszimmer <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Gang"> Gang <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:HAR"> HAR <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Kueche"> Kueche <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Speisekammer"> Speisekammer <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Technikraum"> Technikraum <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Treppenhaus"> Treppenhaus <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_EG:Wohnzimmer"> Wohnzimmer <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
           <div class="orte-grp-hdr">HH - Obergeschoss</div>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:Ankleide"> Ankleide</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:Bad"> Bad</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:Gang"> Gang</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:GaesteAnkleide"> Gaeste Ankleide</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:Gaestezimmer"> Gaestezimmer</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:HWR"> HWR</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:Leonie"> Leonie</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:Schlafen"> Schlafen</label>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:Treppenhaus"> Treppenhaus</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:Ankleide"> Ankleide <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:Bad"> Bad <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:Gang"> Gang <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:GaesteAnkleide"> Gaeste Ankleide <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:Gaestezimmer"> Gaestezimmer <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:HWR"> HWR <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:Leonie"> Leonie <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:Schlafen"> Schlafen <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="HH_OG:Treppenhaus"> Treppenhaus <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
           <div class="orte-grp-hdr">HH - Dach</div>
-          <label class="orte-cb"><input type="checkbox" value="HH_DG:Dach"> Dach</label>
+          <label class="orte-cb"><input type="checkbox" value="HH_DG:Dach"> Dach <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
         </div>
         <div class="orte-col">
           <div class="orte-grp-hdr">ELW - Erdgeschoss</div>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Ankleide"> Ankleide</label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Bad"> Bad</label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Esszimmer"> Esszimmer</label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Gang"> Gang</label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Kueche"> Kueche</label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Schlafen"> Schlafen</label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Terasse"> Terasse</label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:WC"> WC</label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Wohnzimmer"> Wohnzimmer</label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Zocken"> Zocken</label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Ankleide"> Ankleide <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Bad"> Bad <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Esszimmer"> Esszimmer <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Gang"> Gang <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Kueche"> Kueche <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Schlafen"> Schlafen <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Terasse"> Terasse <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:WC"> WC <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Wohnzimmer"> Wohnzimmer <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Zocken"> Zocken <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
           <div class="orte-grp-hdr">ELW - Dach</div>
-          <label class="orte-cb"><input type="checkbox" value="ELW_DG:Dachboden"> Dachboden</label>
+          <label class="orte-cb"><input type="checkbox" value="ELW_DG:Dachboden"> Dachboden <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
           <div class="orte-grp-hdr">Aussen</div>
-          <label class="orte-cb"><input type="checkbox" value="Drausen_DG:Dachboden"> Dachboden</label>
-          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Einfahrt"> Einfahrt</label>
-          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Garage"> Garage</label>
-          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Garten"> Garten</label>
-          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Tor"> Tor</label>
-          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Werkstatt"> Werkstatt</label>
+          <label class="orte-cb"><input type="checkbox" value="Drausen_DG:Dachboden"> Dachboden <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Einfahrt"> Einfahrt <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Garage"> Garage <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Garten"> Garten <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Tor"> Tor <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
+          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Werkstatt"> Werkstatt <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
         </div>
       </div>
     </div>
