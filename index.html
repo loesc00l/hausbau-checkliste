@@ -186,10 +186,29 @@ header h1{font-size:1.25rem;font-weight:700}
   border-radius:8px;cursor:pointer;transition:all .15s;font-size:.78rem;color:#718096}
 .none-opt:hover{border-color:#e2e8f0;background:#f7fafc}
 .none-opt.selected{border-color:#e2e8f0;background:#f7fafc}
-@media(max-width:680px){
-  .sidebar{display:none}
-  .main{margin-left:0;padding:12px}
+/* ── Mobile Hamburger ─────────────────────────────────────────────── */
+.mob-btn{display:none;position:fixed;bottom:22px;left:18px;width:50px;height:50px;
+  border-radius:50%;background:#1a2f4e;color:#fff;border:2px solid rgba(255,255,255,.18);
+  font-size:1.35rem;cursor:pointer;z-index:600;
+  box-shadow:0 4px 16px rgba(0,0,0,.45);
+  align-items:center;justify-content:center;transition:background .15s}
+.mob-btn:hover{background:#2a4a7f}
+.mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:499}
+.mob-overlay.vis{display:block}
+@media(max-width:700px){
+  .mob-btn{display:flex}
+  .sidebar{transform:translateX(-220px);transition:transform .25s ease}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0!important;padding:10px!important}
+  header{margin-left:0!important;padding:12px 14px}
+  header h1{font-size:1rem}
+  .hdr-right .dash-btn{display:none}
+  .filter-bar{margin-left:0!important;padding:8px 10px;gap:6px}
   .grid{grid-template-columns:1fr}
+  .task-item{padding:10px 10px}
+  .task-txt{font-size:.82rem}
+  .chk{width:22px;height:22px}
+  .search-inp{width:100%}
 }
 
 /* ── Sidebar Navigation ───────────────────────────────────────────── */
@@ -212,20 +231,18 @@ header,#root,.filter-bar{margin-left:210px}
 </style>
 </head>
 <body>
-<nav class="sidebar">
+<div class="mob-overlay" id="mobOv" onclick="mobToggle()"></div>
+<button class="mob-btn" id="mobBtn" onclick="mobToggle()">☰</button>
+<nav class="sidebar" id="mainSidebar">
   <div class="sb-logo"><h2>🏗️ Hausbau</h2><p>Projekt-Übersicht</p></div>
   <div class="sb-sec">Navigation</div>
-  <a class="sb-link" href="index.html">🏠 Checklisten</a>
+  <a class="sb-link active" href="index.html">🏠 Checklisten</a>
   <a class="sb-link" href="einkaufsliste.html">🛒 Einkaufsliste</a>
-  <a class="sb-link active" href="dashboard.html">📊 Dashboard</a>
+  <a class="sb-link" href="dashboard.html">📊 Dashboard</a>
   <div class="sb-divider"></div>
   <div class="sb-sec">Bereiche</div>
-  <a class="sb-link" id="sbAll"  onclick="sbFilter('all')" href="#">🌐 Alle Bereiche</a>
-  <a class="sb-link" id="sbHH"   onclick="sbFilter('HH - Haupthaus')" href="#">🏡 Haupthaus</a>
-  <a class="sb-link" id="sbELW"  onclick="sbFilter('ELW - Einliegerwohnung')" href="#">🏘️ Einliegerwohnung</a>
-  <a class="sb-link" id="sbDrau" onclick="sbFilter('Drausen - Aussenbereich')" href="#">🌳 Außenbereich</a>
+  <div id="sb"></div>
 </nav>
-
 
 <div class="modal-bg hidden" id="pwModal">
   <div class="modal">
@@ -727,13 +744,7 @@ function setFlt(f, btn) {
 // ── UI aufbauen ───────────────────────────────────────────────────────────
 function rebuildUI() {
   if (!Object.keys(tasks).length) return;
-  let html='', sbHtml = `<div class="sb-logo"><h2>🏗️ Hausbau</h2><p>Projekt-Übersicht</p></div>
-    <div class="sb-sec">Navigation</div>
-    <a class="sb-link active" href="index.html">🏠 Checklisten</a>
-    <a class="sb-link" href="einkaufsliste.html">🛒 Einkaufsliste</a>
-    <a class="sb-link" href="dashboard.html">📊 Dashboard</a>
-    <div class="sb-divider"></div>
-    <div class="sb-sec">Bereiche</div>`;
+  let html='', sbHtml = '';
 
   for (const [s, floors] of Object.entries(tasks)) {
     const m = META[s] || {icon:'🏠', color:'#2c5282'};
@@ -758,6 +769,12 @@ function rebuildUI() {
   document.getElementById('content').innerHTML = html;
   document.getElementById('sb').innerHTML = sbHtml;
   globalProgress();
+}
+
+// ── Mobile Sidebar ────────────────────────────────────────────────────────
+function mobToggle() {
+  document.getElementById('mainSidebar').classList.toggle('open');
+  document.getElementById('mobOv').classList.toggle('vis');
 }
 
 // ── Detail-Drawer ─────────────────────────────────────────────────────────
