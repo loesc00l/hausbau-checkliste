@@ -4,7 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Einkaufsliste – Hausbau</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+// ── Mobile Sidebar ────────────────────────────────────────────────────────
+function mobToggle() {
+  document.getElementById('sb').classList.toggle('open');
+  document.getElementById('mobOv').classList.toggle('vis');
+}
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#2d3748;min-height:100vh}
@@ -132,9 +138,39 @@ header h1{font-size:1.25rem;font-weight:700}
 .setup-banner{background:#ebf8ff;border:1px solid #bee3f8;border-radius:9px;
   padding:14px 18px;margin-bottom:20px;font-size:.82rem;color:#2b6cb0}
 .setup-banner strong{color:#2c5282}
+
+/* ── Mobile ─────────────────────────────────────────────── */
+.mob-btn{display:none;position:fixed;bottom:22px;left:18px;width:50px;height:50px;
+  border-radius:50%;background:#1a2f4e;color:#fff;border:2px solid rgba(255,255,255,.18);
+  font-size:1.35rem;cursor:pointer;z-index:600;
+  box-shadow:0 4px 16px rgba(0,0,0,.45);
+  align-items:center;justify-content:center;transition:background .15s}
+.mob-btn:hover{background:#2a4a7f}
+.mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:499}
+.mob-overlay.vis{display:block}
+@media(max-width:700px){
+  .mob-btn{display:flex}
+  .sidebar{transform:translateX(-220px);transition:transform .25s ease;z-index:500}
+  .sidebar.open{transform:translateX(0)}
+  header,.main-wrap{margin-left:0!important;padding:10px 12px!important}
+  .hdr-right a,.hdr-right .hdr-avatar{display:none}
+  header h1{font-size:1rem}
+  .stats-row{grid-template-columns:1fr 1fr;gap:8px}
+  .artikel-grid{grid-template-columns:1fr}
+  .artikel-card{padding:14px 14px}
+  .artikel-hdr{gap:8px}
+  .artikel-title{font-size:.88rem}
+  .loc-row{padding:9px 0}
+  .filter-bar{padding:6px 10px;gap:5px}
+  .flt{font-size:.72rem;padding:5px 10px}
+  .chk-box{width:22px;height:22px;flex-shrink:0}
+  .todo-add-btn{font-size:.7rem;padding:5px 10px}
+}
 </style>
 </head>
 <body>
+<div class="mob-overlay" id="mobOv" onclick="mobToggle()"></div>
+<button class="mob-btn" id="mobBtn" onclick="mobToggle()">☰</button>
 
 <header>
   <span style="font-size:1.6rem">🛒</span>
@@ -545,20 +581,4 @@ function buildTodosSection() {
         + Hauptseite
       </button>
     </div>`).join('');
-  document.getElementById('todosSection').innerHTML = `
-    <div class="todo-section">
-      <div class="todo-hdr">
-        <span style="font-size:1.2rem">📋</span>
-        <h3>Noch zu kaufen – vorgeschlagene Todos (${offene.length})</h3>
-      </div>
-      ${rows}
-    </div>`;
-}
-
-// ── Init ────────────────────────────────────────────────────────────────────
-initModal();
-restoreUser();
-loadAll().then(subscribe);
-</script>
-</body>
-</html>
+  document.getElementById('todosSection
