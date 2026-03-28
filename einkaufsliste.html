@@ -605,14 +605,33 @@ async function loadCustomArtikel() {
     if (existingNames.has(r.artikel.toLowerCase())) return;
     let orte = [];
     try { orte = JSON.parse(r.orte || '[]'); } catch(e) {}
-    const locations = orte.length
-      ? orte.map(ort => ({ort, menge: 1, gesamt: r.preis || 0, gewerk: r.gewerk || ''}))
-      : [{ort: 'Manuell', menge: 1, gesamt: r.preis || 0, gewerk: r.gewerk || ''}];
+    const typ = r.art || 'Stk';
+    const preisEinzel = r.preis || 0;
+    const locList = orte.length ? orte : ['Manuell'];
+    const locations = locList.map(ort => ({
+      ort,
+      menge:        1,
+      typ,
+      preis_einzel: preisEinzel,
+      gesamt:       preisEinzel,
+      gewerk:       r.gewerk || '',
+      kategorie:    '',
+      posten:       r.artikel,
+      prio:         '',
+      beschreibung: r.beschreibung || ''
+    }));
+    const mengeGesamt = locList.length;
     EINKAUF_DATA.push({
-      artikel: r.artikel, gewerk: r.gewerk || 'Sonstiges',
-      beschreibung: r.beschreibung || '', url: r.url || '',
-      preis: r.preis || 0, art: r.art || 'Stueck',
-      locations, gesamt: r.preis || 0, _custom: true
+      artikel:      r.artikel,
+      gewerk:       r.gewerk || 'Sonstiges',
+      beschreibung: r.beschreibung || '',
+      url:          r.url || '',
+      preis:        preisEinzel,
+      art:          typ,
+      menge_gesamt: mengeGesamt,
+      gesamt:       preisEinzel * mengeGesamt,
+      locations,
+      _custom:      true
     });
   });
   rebuildUI();
