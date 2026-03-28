@@ -146,7 +146,11 @@ header h1{font-size:1.25rem;font-weight:700}
   .mob-btn{display:flex}
   .sidebar{transform:translateX(-220px);transition:transform .25s ease;z-index:500}
   .sidebar.open{transform:translateX(0)}
-  header,.main-wrap{margin-left:0!important;padding:10px 12px!important}
+  header,.main-wrap{margin-left:0!important;padding:8px 10px!important}
+  header h1{font-size:.92rem}
+  .hdr-sub{display:none}
+  .hdr-right{gap:6px}
+  .prog-wrap{display:none}
   .hdr-right a,.hdr-right .hdr-avatar{display:none}
   header h1{font-size:1rem}
   .stats-row{grid-template-columns:1fr 1fr;gap:8px}
@@ -809,6 +813,29 @@ loadAll().then(() => {
   color:#a0aec0;padding:3px 6px;border-radius:4px;line-height:1;flex-shrink:0}
 .del-btn:hover{color:#e53e3e;background:#fff5f5}
 .am-box h2{margin-bottom:14px;font-size:1.08rem;color:#2c5282;display:flex;align-items:center;gap:8px}
+
+@media(max-width:700px){
+  .artikel-hdr{flex-wrap:wrap;gap:4px}
+  .artikel-meta{flex-wrap:wrap;gap:4px;width:100%}
+  .artikel-name{font-size:.88rem;width:100%}
+  .preis-badge,.menge-badge,.tag{font-size:.68rem;padding:2px 6px}
+  .link-btn{font-size:.72rem;padding:3px 7px}
+  .edit-btn,.del-btn{font-size:.75rem;padding:2px 5px}
+  .gewerk-hdr{padding:10px 12px}
+  .gewerk-ttl{font-size:.9rem}
+  .artikel-card{padding:0}
+  .loc-row{padding:8px 0}
+  .cb-lbl{font-size:.78rem}
+  .am-box{padding:16px 14px}
+  .am-row{flex-direction:column;gap:6px}
+  .orte-grid{grid-template-columns:1fr;max-height:160px}
+  .orte-col+.orte-col{border-left:none;border-top:1px solid #e2e8f0}
+}
+@media(max-width:400px){
+  .artikel-meta .arr{display:none}
+  .gewerk-sum{font-size:.8rem}
+  .fab-new{width:44px;height:44px;font-size:1.4rem;bottom:76px}
+}
 .fab-new{position:fixed;bottom:22px;right:22px;width:52px;height:52px;border-radius:50%;
   background:#e53e3e;color:#fff;border:none;font-size:1.6rem;cursor:pointer;
   box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:600;display:flex;align-items:center;
