@@ -827,9 +827,11 @@ loadAll().then(() => {
 .orte-cb input[type=checkbox]{width:13px;height:13px;accent-color:#2c5282;
   cursor:pointer;flex-shrink:0}
 .orte-cb:hover{color:#2c5282}
-.orte-menge{width:42px;padding:1px 4px;border:1px solid #cbd5e0;border-radius:4px;
-  font-size:.78rem;text-align:center;background:#fff;color:#2d3748;
-  opacity:0;pointer-events:none;transition:opacity .15s}
+.orte-menge{width:32px;padding:1px 3px;border:1px solid #cbd5e0;border-radius:4px;
+  font-size:.75rem;text-align:center;background:#fff;color:#2d3748;
+  opacity:0;pointer-events:none;transition:opacity .15s;
+  -moz-appearance:textfield}
+.orte-menge::-webkit-inner-spin-button,.orte-menge::-webkit-outer-spin-button{display:none}
 .orte-cb input[type=checkbox]:checked ~ .orte-menge{opacity:1;pointer-events:auto}
 </style>
 
