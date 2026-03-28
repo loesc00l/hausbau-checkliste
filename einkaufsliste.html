@@ -591,16 +591,10 @@ function buildTodosSection() {
     </div>`;
 }
 
-// ── Init ────────────────────────────────────────────────────────────────────
+// ── Init ───────────────────────────────────────────────────────────────────────
 initModal();
 restoreUser();
 loadAll().then(subscribe);
-
-// ── Mobile Sidebar ────────────────────────────────────────────────────────
-function mobToggle() {
-  document.getElementById('sb').classList.toggle('open');
-  document.getElementById('mobOv').classList.toggle('vis');
-}
 </script>
 </body>
 </html>
