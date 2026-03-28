@@ -520,8 +520,8 @@ function buildArtikelCard(item) {
         ${gesamtStr ? '<span class="preis-badge" style="color:#2c5282;font-weight:700">∑ '+gesamtStr+'</span>' : ''}
         ${effMenge(item) > 0 ? '<span class="menge-badge">'+effMenge(item)+' '+item.art+'</span>' : ''}
         ${linkBtn}
-        <button class="edit-btn" onclick="event.stopPropagation();editArtikel('${esc(item.artikel)}')" title="Bearbeiten">✏️</button>
-        ${item._custom ? '<button class="del-btn" onclick="event.stopPropagation();deleteArtikel(''+esc(item.artikel)+'')" title="Löschen">🗑️</button>' : ''}
+                <button class="edit-btn" data-art="${esc(item.artikel)}" onclick="event.stopPropagation();editArtikel(this.dataset.art)" title="Bearbeiten">✏️</button>
+        ${item._custom ? `<button class="del-btn" data-art="${esc(item.artikel)}" onclick="event.stopPropagation();deleteArtikel(this.dataset.art)" title="Löschen">🗑</button>` : ''}
         <span class="arr">▼</span>
       </div>
     </div>
