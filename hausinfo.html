@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>🏡 Haus-Info — Hausbau</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f4f8;
+      color: #1a2f4e;
+    }
+
+    header {
+      background: #2c5282;
+      color: #fff;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.18);
+    }
+
+    header h1 {
+      font-size: 1.3rem;
+      font-weight: 600;
+    }
+
+    .top-nav {
+      background: #1a2f4e;
+      display: flex;
+      align-items: center;
+      overflow-x: auto;
+      scrollbar-width: none;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+      min-height: 40px;
+    }
+
+    .top-nav::-webkit-scrollbar {
+      display: none;
+    }
+
+    .top-nav > a {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 10px 14px;
+      font-size: .78rem;
+      color: rgba(255,255,255,.6);
+      text-decoration: none;
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
+      transition: all .15s;
+    }
+
+    .top-nav > a:hover {
+      color: #fff;
+      background: rgba(255,255,255,.06);
+    }
+
+    .top-nav > a.active {
+      color: #fff;
+      border-bottom-color: #68d391;
+      font-weight: 600;
+      background: rgba(255,255,255,.04);
+    }
+
+    main {
+      padding: 22px 26px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .kpi-card {
+      background: #fff;
+      padding: 18px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,.08);
+      border-left: 4px solid #68d391;
+    }
+
+    .kpi-label {
+      font-size: .8rem;
+      color: #666;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .kpi-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #2c5282;
+    }
+
+    .kpi-subtext {
+      font-size: .7rem;
+      color: #999;
+      margin-top: 4px;
+    }
+
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #2c5282;
+      margin-bottom: 14px;
+      margin-top: 24px;
+    }
+
+    .tab-container {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      padding: 10px 16px;
+      border: 1px solid #ccc;
+      background: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: .85rem;
+      font-weight: 500;
+      transition: all .2s;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      background: #f0f4f8;
+      border-color: #999;
+    }
+
+    .tab-btn.active {
+      background: #2c5282;
+      color: #fff;
+      border-color: #2c5282;
+    }
+
+    .room-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .room-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 4px rgba(0,0,0,.08);
+      border-top: 3px solid #68d391;
+    }
+
+    .room-name {
+      font-weight: 600;
+      color: #2c5282;
+      font-size: .95rem;
+      margin-bottom: 8px;
+    }
+
+    .room-section {
+      font-size: .75rem;
+      color: #999;
+      margin-bottom: 10px;
+    }
+
+    .room-detail {
+      display: flex;
+      justify-content: space-between;
+      font-size: .8rem;
+      margin-bottom: 6px;
+      color: #555;
+    }
+
+    .room-area-bar {
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .room-area-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #2c5282, #68d391);
+    }
+
+    .room-dimensions {
+      font-size: .75rem;
+      color: #666;
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+
+    .room-footer {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      align-items: center;
+    }
+
+    .window-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #eef;
+      color: #338;
+      padding: 4px 8px;
+      border-radius: 3px;
+      font-size: .7rem;
+      font-weight: 600;
+    }
+
+    .table-container {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,.08);
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: #f0f4f8;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    th {
+      text-align: left;
+      padding: 12px 16px;
+      font-weight: 600;
+      font-size: .85rem;
+      color: #2c5282;
+    }
+
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: .9rem;
+    }
+
+    tr:hover {
+      background: #f9fafb;
+    }
+
+    .color-elw { border-top-color: #48a779; }
+    .color-hh-eg { border-top-color: #4299e1; }
+    .color-hh-og { border-top-color: #9f7aea; }
+    .color-drausen { border-top-color: #c05621; }
+
+    @media (max-width: 768px) {
+      .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .room-grid {
+        grid-template-columns: 1fr;
+      }
+
+      header h1 {
+        font-size: 1.1rem;
+      }
+
+      .tab-container {
+        gap: 6px;
+      }
+
+      .tab-btn {
+        padding: 8px 12px;
+        font-size: .75rem;
+      }
+    }
+
+    .sticky-header { position:sticky; top:0; z-index:300; }
+  </style>
+</head>
+<body>
+  <div class="sticky-header">
+  <header>
+    <h1>🏡 Haus-Info | Hausbau</h1>
+  </header>
+    <nav class="top-nav">
+    <a href="index.html">🏠 Checklisten</a>
+    <a href="einkaufsliste.html">🛒 Einkauf</a>
+    <a href="finanzen.html">💶 Finanzen</a>
+    <a href="hausinfo.html" class="active">🏡 Haus-Info</a>
+    <a href="dashboard.html">📊 Dashboard</a>
+  </nav>
+  </div>
+
+  <main>
+    <div class="kpi-grid" id="kpiGrid">
+      <div class="kpi-card">
+        <div class="kpi-label">🏠 Räume insgesamt</div>
+        <div class="kpi-value" id="totalRooms">0</div>
+        <div class="kpi-subtext">Zimmerzahl</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">📐 Wohnfläche</div>
+        <div class="kpi-value" id="livingArea">0 m²</div>
+        <div class="kpi-subtext">Innenbereich</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">📏 Gesamtfläche</div>
+        <div class="kpi-value" id="totalArea">0 m²</div>
+        <div class="kpi-subtext">Mit Außenbereichen</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-label">🪟 Mit Fenstern</div>
+        <div class="kpi-value" id="roomsWithWindows">0</div>
+        <div class="kpi-subtext">Räume mit Fenstern</div>
+      </div>
+    </div>
+
+    <div class="section-title">Bereiche</div>
+    <div class="tab-container" id="tabContainer"></div>
+
+    <div class="room-grid" id="roomGrid"></div>
+
+    <div class="section-title">🪟 Fenster-Übersicht</div>
+    <div class="table-container">
+      <table id="windowTable">
+        <thead>
+          <tr>
+            <th>Raum</th>
+            <th>Fensterart</th>
+            <th>Flügel</th>
+            <th>Breite (m)</th>
+            <th>Länge (m)</th>
+            <th>Höhe (m)</th>
+            <th>Etage / Bereich</th>
+          </tr>
+        </thead>
+        <tbody id="windowTableBody"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    const ROOMS = [
+      {ort:"ELW_EG:Bad",       etage:"EG_ELW",      fenster:1, breite:2.155, laenge:3.25,  hoehe:2.53, flaeche:7},
+      {ort:"ELW_EG:Ankleide",  etage:"EG_ELW",      fenster:0, breite:1.35,  laenge:1.593, hoehe:2.53, flaeche:3.93},
+      {ort:"ELW_EG:WC",        etage:"EG_ELW",      fenster:0, breite:1.35,  laenge:3.187, hoehe:2.53, flaeche:2.13},
+      {ort:"ELW_EG:Schlafen",  etage:"EG_ELW",      fenster:1, breite:3.17,  laenge:4.78,  hoehe:2.53, flaeche:15.15},
+      {ort:"ELW_EG:Zocken",    etage:"EG_ELW",      fenster:2, breite:2.365, laenge:3.25,  hoehe:2.53, flaeche:7.68},
+      {ort:"ELW_EG:Wohnzimmer",etage:"EG_ELW",      fenster:1, breite:3.078, laenge:8,     hoehe:2.53, flaeche:28.39},
+      {ort:"ELW_EG:Küche",     etage:"EG_ELW",      fenster:1, breite:3.078, laenge:3.275, hoehe:2.53, flaeche:8.92},
+      {ort:"ELW_EG:Esszimmer", etage:"EG_ELW",      fenster:1, breite:3.078, laenge:3.275, hoehe:2.53, flaeche:10},
+      {ort:"ELW_EG:Gang",      etage:"EG_ELW",      fenster:0, breite:4.735, laenge:1.575, hoehe:2.53, flaeche:7.77},
+      {ort:"ELW_EG:Terasse",   etage:"EG_ELW",      fenster:0, breite:5.5,   laenge:8,     hoehe:2.53, flaeche:44},
+      {ort:"ELW_DG:Dachboden", etage:"DG_ELW",      fenster:0, breite:2.52,  laenge:0,     hoehe:0,    flaeche:0},
+      {ort:"HH_OG:Schlafen",   etage:"OG_HH",       fenster:1, breite:3.07,  laenge:4.265, hoehe:2.52, flaeche:13.1},
+      {ort:"HH_OG:Bad",        etage:"OG_HH",       fenster:1, breite:3.08,  laenge:4.265, hoehe:2.52, flaeche:10.76},
+      {ort:"HH_OG:Ankleide",   etage:"OG_HH",       fenster:1, breite:2.295, laenge:4.265, hoehe:2.52, flaeche:9.79},
+      {ort:"HH_OG:Leonie",     etage:"OG_HH",       fenster:2, breite:5,     laenge:5.755, hoehe:2.52, flaeche:27.36},
+      {ort:"HH_OG:Gästezimmer",etage:"OG_HH",       fenster:1, breite:3.66,  laenge:4.09,  hoehe:2.52, flaeche:16.83},
+      {ort:"HH_OG:Gäste Ankleide",etage:"OG_HH",   fenster:0, breite:2.515, laenge:1.06,  hoehe:2.52, flaeche:2.67},
+      {ort:"HH_OG:HWR",        etage:"OG_HH",       fenster:1, breite:2.74,  laenge:4.265, hoehe:2.52, flaeche:12.52},
+      {ort:"HH_OG:Gang",       etage:"OG_HH",       fenster:0, breite:3.275, laenge:1.495, hoehe:2.52, flaeche:8.97},
+      {ort:"HH_DG:Dach",       etage:"DG_HH",       fenster:0, breite:2.52,  laenge:0,     hoehe:0,    flaeche:0},
+      {ort:"HH_OG:Treppenhaus",etage:"OG_HH",       fenster:1, breite:2.515, laenge:5.08,  hoehe:2.52, flaeche:11.53},
+      {ort:"HH_EG:Wohnzimmer", etage:"EG_HH",       fenster:1, breite:4.25,  laenge:4.76,  hoehe:2.53, flaeche:20.23},
+      {ort:"HH_EG:Küche",      etage:"EG_HH",       fenster:1, breite:2.63,  laenge:3.51,  hoehe:2.53, flaeche:9.76},
+      {ort:"HH_EG:Esszimmer",  etage:"EG_HH",       fenster:1, breite:3.4,   laenge:5.3,   hoehe:2.53, flaeche:26.32},
+      {ort:"HH_EG:Treppenhaus",etage:"EG_HH",       fenster:1, breite:2.515, laenge:5.08,  hoehe:2.53, flaeche:12.79},
+      {ort:"HH_EG:Abstellraum",etage:"EG_HH",       fenster:0, breite:2.515, laenge:3.41,  hoehe:2.53, flaeche:5},
+      {ort:"HH_EG:Büro",       etage:"EG_HH",       fenster:1, breite:3.5,   laenge:4,     hoehe:2.53, flaeche:13.42},
+      {ort:"HH_EG:Speisekammer",etage:"EG_HH",      fenster:1, breite:2.63,  laenge:1.63,  hoehe:2.53, flaeche:4.33},
+      {ort:"HH_EG:Technikraum",etage:"EG_HH",       fenster:0, breite:3.275, laenge:4.3,   hoehe:2.53, flaeche:10.78},
+      {ort:"HH_EG:Bad",        etage:"EG_HH",       fenster:1, breite:2.515, laenge:3.895, hoehe:2.53, flaeche:11.95},
+      {ort:"HH_EG:HAR",        etage:"EG_HH",       fenster:0, breite:2.515, laenge:1.06,  hoehe:2.53, flaeche:2.66},
+      {ort:"HH_EG:Gang",       etage:"EG_HH",       fenster:0, breite:3.5,   laenge:1.5,   hoehe:2.53, flaeche:6.99},
+      {ort:"Drausen_EG:Garage",    etage:"EG_Drausen",  fenster:0, breite:7.06,  laenge:5.77,  hoehe:2.9,  flaeche:40.7},
+      {ort:"Drausen_EG:Werkstatt", etage:"EG_Drausen",  fenster:0, breite:1.93,  laenge:5.77,  hoehe:2.9,  flaeche:11.1},
+    ];
+
+    // Fensterdaten aus Excel-Tabelle "Fenster" (Spalten: Raum | Fensterart | Flügel | Länge in m | Breite in m)
+    const WINDOWS = [
+      {ort:"ELW_EG:Bad",          art:"Dreh-Kipp",   fluegel:1, laenge:2.0,  breite:2.3},
+      {ort:"ELW_EG:Schlafen",     art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
+      {ort:"ELW_EG:Zocken",       art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
+      {ort:"ELW_EG:Zocken",       art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
+      {ort:"ELW_EG:Wohnzimmer",   art:"Dreh-Kipp",   fluegel:2, laenge:null, breite:null},
+      {ort:"ELW_EG:Küche",        art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
+      {ort:"ELW_EG:Esszimmer",    art:"Dreh-Kipp",   fluegel:2, laenge:null, breite:null},
+      {ort:"HH_OG:Schlafen",      art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
+      {ort:"HH_OG:Bad",           art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
+      {ort:"HH_OG:Ankleide",      art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
+      {ort:"HH_OG:Leonie",        art:"Dreh-Kipp",   fluegel:2, laenge:null, breite:null},
+      {ort:"HH_OG:Leonie",        art:"Dreh-Kipp",   fluegel:2, laenge:null, breite:null},
+      {ort:"HH_OG:Gästezimmer",   art:"Dreh-Kipp",   fluegel:2, laenge:null, breite:null},
+      {ort:"HH_OG:HWR",           art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
+      {ort:"HH_OG:Treppenhaus",   art:"Fest",        fluegel:0, laenge:null, breite:null},
+      {ort:"HH_EG:Wohnzimmer",    art:"Hebeschiebe", fluegel:1, laenge:null, breite:null},
+      {ort:"HH_EG:Küche",         art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
+      {ort:"HH_EG:Esszimmer",     art:"Hebeschiebe", fluegel:1, laenge:null, breite:null},
+      {ort:"HH_EG:Treppenhaus",   art:"Fest",        fluegel:0, laenge:null, breite:null},
+      {ort:"HH_EG:Büro",          art:"Dreh-Kipp",   fluegel:2, laenge:null, breite:null},
+      {ort:"HH_EG:Speisekammer",  art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
+      {ort:"HH_EG:Bad",           art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
+    ];
+
+    const SECTIONS = {
+      "EG_ELW": { name: "Einliegerwohnung EG", color: "#48a779", colorClass: "color-elw" },
+      "DG_ELW": { name: "Einliegerwohnung DG", color: "#48a779", colorClass: "color-elw" },
+      "EG_HH": { name: "Haupthaus EG", color: "#4299e1", colorClass: "color-hh-eg" },
+      "OG_HH": { name: "Haupthaus OG", color: "#9f7aea", colorClass: "color-hh-og" },
+      "DG_HH": { name: "Haupthaus DG", color: "#9f7aea", colorClass: "color-hh-og" },
+      "EG_Drausen": { name: "Außenbereich", color: "#c05621", colorClass: "color-drausen" },
+    };
+
+    let currentSection = null;
+    const maxFlaeche = Math.max(...ROOMS.map(r => r.flaeche));
+
+    function initializeUI() {
+      renderKPIs();
+      renderSectionTabs();
+      selectSection("EG_HH");
+      renderWindowTable();
+    }
+
+    function renderKPIs() {
+      const validRooms = ROOMS.filter(r => r.flaeche > 0);
+      const totalRooms = validRooms.length;
+      const livingArea = validRooms.filter(r => !r.etage.includes("Drausen")).reduce((s, r) => s + r.flaeche, 0);
+      const totalArea = validRooms.reduce((s, r) => s + r.flaeche, 0);
+      const roomsWithWindows = validRooms.filter(r => r.fenster > 0).length;
+
+      document.getElementById("totalRooms").textContent = totalRooms;
+      document.getElementById("livingArea").textContent = Math.round(livingArea * 100) / 100 + " m²";
+      document.getElementById("totalArea").textContent = Math.round(totalArea * 100) / 100 + " m²";
+      document.getElementById("roomsWithWindows").textContent = roomsWithWindows;
+    }
+
+    function renderSectionTabs() {
+      const container = document.getElementById("tabContainer");
+      const sections = ["EG_HH", "OG_HH", "EG_ELW", "EG_Drausen"];
+      sections.forEach(key => {
+        const section = SECTIONS[key];
+        const btn = document.createElement("button");
+        btn.className = "tab-btn";
+        btn.textContent = section.name;
+        btn.addEventListener("click", () => selectSection(key));
+        container.appendChild(btn);
+      });
+    }
+
+    function selectSection(sectionKey) {
+      currentSection = sectionKey;
+      document.querySelectorAll(".tab-btn").forEach((btn, idx) => {
+        btn.classList.toggle("active", ["EG_HH", "OG_HH", "EG_ELW", "EG_Drausen"][idx] === sectionKey);
+      });
+      renderRoomGrid();
+    }
+
+    function renderRoomGrid() {
+      const grid = document.getElementById("roomGrid");
+      grid.innerHTML = "";
+
+      const sectionRooms = ROOMS.filter(r => r.etage === currentSection && r.flaeche > 0);
+      const section = SECTIONS[currentSection];
+
+      sectionRooms.forEach(room => {
+        const card = document.createElement("div");
+        card.className = `room-card ${section.colorClass}`;
+
+        const roomNameDisplay = room.ort.split(":")[1] || room.ort;
+        const widthPercent = (room.flaeche / maxFlaeche) * 100;
+
+        card.innerHTML = `
+          <div class="room-name">${roomNameDisplay}</div>
+          <div class="room-section">${section.name}</div>
+          <div class="room-area-bar">
+            <div class="room-area-fill" style="width: ${widthPercent}%"></div>
+          </div>
+          <div class="room-detail">
+            <span>Fläche:</span>
+            <span><strong>${Math.round(room.flaeche * 100) / 100} m²</strong></span>
+          </div>
+          <div class="room-dimensions">
+            B: ${room.breite.toFixed(2)}m | L: ${room.laenge.toFixed(2)}m | H: ${room.hoehe.toFixed(2)}m
+          </div>
+          <div class="room-footer">
+            ${room.fenster > 0 ? `<div class="window-badge">🪟 ${getRoomFluegel(room.ort)} Fl.</div>` : '<div style="flex:1"></div>'}
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function getRoomFluegel(ort) {
+      return WINDOWS.filter(w => w.ort === ort).reduce((s, w) => s + w.fluegel, 0);
+    }
+
+    const ART_ICON = { "Dreh-Kipp": "🔄", "Hebeschiebe": "↔️", "Fest": "⬜" };
+
+    function renderWindowTable() {
+      const tbody = document.getElementById("windowTableBody");
+      tbody.innerHTML = "";
+
+      WINDOWS.forEach(win => {
+        const room = ROOMS.find(r => r.ort === win.ort);
+        const roomName = win.ort.split(":")[1] || win.ort;
+        const section = room ? SECTIONS[room.etage] : null;
+        // Fenster-Maße aus Excel-Spalte "Länge in m" / "Breite in m" (Fenster-Tabelle)
+        const laenge = win.laenge != null ? win.laenge.toFixed(2) : '—';
+        const breite = win.breite != null ? win.breite.toFixed(2) : '—';
+        // Raumhöhe bleibt aus Basisdaten (kein eigener Fenster-Wert)
+        const hoehe  = room ? room.hoehe.toFixed(2) : '—';
+        const etage = section ? section.name : '—';
+        const icon = ART_ICON[win.art] || '';
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td><strong>${roomName}</strong></td>
+          <td>${icon} ${win.art}</td>
+          <td style="text-align:center;font-weight:600">${win.fluegel > 0 ? win.fluegel : '<span style="color:#aaa">—</span>'}</td>
+          <td style="font-size:.85rem">${breite}</td>
+          <td style="font-size:.85rem">${laenge}</td>
+          <td style="font-size:.85rem;color:#888">${hoehe}</td>
+          <td style="color:#666;font-size:.82rem">${etage}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    // Initialize
+    initializeUI();
+  </script>
+</body>
+</html>
