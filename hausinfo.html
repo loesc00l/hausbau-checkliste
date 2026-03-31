@@ -346,7 +346,6 @@
             <th>Flügel</th>
             <th>Breite (m)</th>
             <th>Länge (m)</th>
-            <th>Höhe (m)</th>
             <th>Etage / Bereich</th>
           </tr>
         </thead>
@@ -524,8 +523,6 @@
         // Fenster-Maße aus Excel-Spalte "Länge in m" / "Breite in m" (Fenster-Tabelle)
         const laenge = win.laenge != null ? win.laenge.toFixed(2) : '—';
         const breite = win.breite != null ? win.breite.toFixed(2) : '—';
-        // Raumhöhe bleibt aus Basisdaten (kein eigener Fenster-Wert)
-        const hoehe  = room ? room.hoehe.toFixed(2) : '—';
         const etage = section ? section.name : '—';
         const icon = ART_ICON[win.art] || '';
 
@@ -536,7 +533,6 @@
           <td style="text-align:center;font-weight:600">${win.fluegel > 0 ? win.fluegel : '<span style="color:#aaa">—</span>'}</td>
           <td style="font-size:.85rem">${breite}</td>
           <td style="font-size:.85rem">${laenge}</td>
-          <td style="font-size:.85rem;color:#888">${hoehe}</td>
           <td style="color:#666;font-size:.82rem">${etage}</td>
         `;
         tbody.appendChild(row);
