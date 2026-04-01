@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Einkaufsliste – Hausbau</title>
+<style>html{visibility:hidden}</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth-guard.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#2d3748;min-height:100vh}
@@ -166,6 +168,11 @@ header h1{font-size:1.25rem;font-weight:700}
   font-weight:600;background:rgba(255,255,255,.04)}
 .top-nav .nav-sep{width:1px;height:20px;background:rgba(255,255,255,.2);
   margin:0 4px;flex-shrink:0;align-self:center}
+.nav-user{font-size:.72rem;color:rgba(255,255,255,.6);padding:0 8px;white-space:nowrap}
+.nav-logout{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  color:rgba(255,255,255,.7);padding:5px 12px;border-radius:6px;cursor:pointer;
+  font-size:.72rem;transition:all .15s;white-space:nowrap;margin-left:4px}
+.nav-logout:hover{background:rgba(255,255,255,.2);color:#fff}
 
 /* ── Kauf/Verbaut Buttons ────────────────────────────────────────── */
 .kauf-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;
@@ -212,7 +219,8 @@ header h1{font-size:1.25rem;font-weight:700}
   <a href="hausinfo.html">🏡 Haus-Info</a>
   <a href="dashboard.html">📊 Dashboard</a>
   <span class="nav-sep"></span>
-  <div id="sbGewerke" style="display:contents"></div>
+  <span class="nav-user" id="navUser"></span>
+  <button class="nav-logout" onclick="hausbauLogout()">⎋ Abmelden</button>
 </nav>
   </div>
 
