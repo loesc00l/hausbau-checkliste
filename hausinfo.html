@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>🏡 Haus-Info — Hausbau</title>
+  <style>html{visibility:hidden}</style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="auth-guard.js"></script>
   <style>
     * {
       margin: 0;
@@ -69,6 +72,38 @@
       border-bottom-color: #68d391;
       font-weight: 600;
       background: rgba(255,255,255,.04);
+    }
+
+    .top-nav .nav-sep {
+      width: 1px;
+      height: 20px;
+      background: rgba(255,255,255,.2);
+      margin: 0 4px;
+    }
+
+    .nav-user {
+      font-size: .72rem;
+      color: rgba(255,255,255,.6);
+      padding: 0 8px;
+      white-space: nowrap;
+    }
+
+    .nav-logout {
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.2);
+      color: rgba(255,255,255,.7);
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: .72rem;
+      transition: all .15s;
+      white-space: nowrap;
+      margin-left: 4px;
+    }
+
+    .nav-logout:hover {
+      background: rgba(255,255,255,.2);
+      color: #fff;
     }
 
     main {
@@ -301,6 +336,9 @@
     <a href="finanzen.html">💶 Finanzen</a>
     <a href="hausinfo.html" class="active">🏡 Haus-Info</a>
     <a href="dashboard.html">📊 Dashboard</a>
+    <span class="nav-sep"></span>
+    <span class="nav-user" id="navUser"></span>
+    <button class="nav-logout" onclick="hausbauLogout()">⎋ Abmelden</button>
   </nav>
   </div>
 
