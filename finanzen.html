@@ -592,4 +592,111 @@
 
       document.getElementById("budgetTotal").textContent = formatCurrency(total);
       document.getElementById("purchasedTotal").textContent = formatCurrency(purchased);
-      document.getElementById("purchasedCount").textContent = data.filter(item => chec
+      document.getElementById("purchasedCount").textContent = data.filter(item => checks[`k:${item.artikel}`]?.gekauft).length;
+      document.getElementById("installedCount").textContent = installed;
+      document.getElementById("remainingBudget").textContent = formatCurrency(remaining);
+    }
+
+    function renderGewerkBreakdown() {
+      const gewerkMap = {};
+      data.forEach(item => {
+        if (!gewerkMap[item.gewerk]) {
+          gewerkMap[item.gewerk] = 0;
+        }
+        gewerkMap[item.gewerk] += effGesamt(item);
+      });
+
+      const sorted = Object.entries(gewerkMap).sort((a, b) => b[1] - a[1]);
+      const maxCost = Math.max(...sorted.map(e => e[1]), 1);
+
+      const container = document.getElementById("gewerkBreakdown");
+      container.innerHTML = "<h3 style='margin-bottom: 16px; color: #2c5282;'>Kosten pro Gewerk</h3>";
+
+      sorted.forEach(([gewerk, cost]) => {
+        const percent = Math.round((cost / maxCost) * 100);
+        const div = document.createElement("div");
+        div.className = "gewerk-item";
+        div.innerHTML = `
+          <div class="gewerk-label">
+            <span>${gewerk}</span>
+            <span>${formatCurrency(cost)}</span>
+          </div>
+          <div class="gewerk-bar">
+            <div class="gewerk-fill" style="width: ${percent}%">
+              ${percent > 15 ? percent + '%' : ''}
+            </div>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function renderProgress() {
+      const total = data.reduce((sum, item) => sum + effGesamt(item), 0);
+      const purchased = data.reduce((sum, item) => {
+        if (checks[`k:${item.artikel}`]?.gekauft) {
+          return sum + effGesamt(item);
+        }
+        return sum;
+      }, 0);
+      const percent = total > 0 ? Math.round((purchased / total) * 100) : 0;
+      const circumference = 314;
+      const offset = circumference - (percent / 100) * circumference;
+
+      document.getElementById("progressCircle").style.strokeDashoffset = offset;
+      document.getElementById("progressPercent").textContent = percent + "%";
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = "";
+
+      const filtered = data.filter(item => {
+        if (currentFilter === "all") return true;
+        if (currentFilter === "gekauft") return checks[`k:${item.artikel}`];
+        if (currentFilter === "verbaut") return item.locations && item.locations.every(loc => checks[`v:${item.artikel}||${loc.ort}`]?.verbaut);
+        if (currentFilter === "open") return !checks[`k:${item.artikel}`];
+        return true;
+      });
+
+      filtered.forEach(item => {
+        const gesamt = effGesamt(item);
+        const isGekauft = checks[`k:${item.artikel}`]?.gekauft;
+        const isVerbaut = item.locations && item.locations.every(loc => checks[`v:${item.artikel}||${loc.ort}`]?.verbaut);
+        let statusClass = "status-open";
+        let statusText = "Offen";
+        if (isVerbaut) {
+          statusClass = "status-verbaut";
+          statusText = "Verbaut";
+        } else if (isGekauft) {
+          statusClass = "status-gekauft";
+          statusText = "Gekauft";
+        }
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td><strong>${item.artikel}</strong></td>
+          <td>${item.gewerk}</td>
+          <td>${formatCurrency(item.preis || 0)}</td>
+          <td>${item.locations.length}</td>
+          <td>${formatCurrency(gesamt)}</td>
+          <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    document.querySelectorAll(".filter-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentFilter = btn.dataset.filter;
+        renderTable();
+      });
+    });
+
+    // Initialize
+    checkAuth();
+  </script>
+</body>
+</html>
