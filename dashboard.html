@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Hausbau Dashboard</title>
+<style>html{visibility:hidden}</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth-guard.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -112,20 +114,6 @@ main{padding:24px 28px;max-width:1400px;margin:0 auto}
   color:var(--txt);font-size:.76rem;outline:none;transition:border-color .15s;margin-left:auto}
 .search-inp:focus{border-color:var(--accent)}
 .filter-count{font-size:.7rem;color:var(--muted);white-space:nowrap}
-.pw-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);
-  display:flex;align-items:center;justify-content:center;z-index:999}
-.pw-modal.hidden{display:none}
-.pw-box{background:#1e293b;border:1px solid #334155;border-radius:16px;
-  padding:32px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-.pw-box h2{font-size:1.1rem;margin-bottom:6px;color:#e2e8f0}
-.pw-box p{font-size:.8rem;color:#94a3b8;margin-bottom:20px}
-.pw-inp{width:100%;padding:11px 14px;background:#0f172a;border:1px solid #334155;
-  border-radius:8px;color:#e2e8f0;font-size:.9rem;outline:none;margin-bottom:10px}
-.pw-inp:focus{border-color:#3b82f6}
-.pw-btn{width:100%;padding:11px;background:#2c5282;color:#fff;border:none;
-  border-radius:8px;font-size:.9rem;cursor:pointer;font-weight:600}
-.pw-btn:hover{background:#2a4a7f}
-.pw-err{color:#ef4444;font-size:.75rem;margin-bottom:10px;display:none}
 /* ── Aufgaben-Übersicht ───────────────────────────────────────────────── */
 .tasks-section{margin-top:16px}
 .sec-block{background:var(--card);border:1px solid var(--border);border-radius:12px;
@@ -172,20 +160,7 @@ main{padding:24px 28px;max-width:1400px;margin:0 auto}
   .kpi-row{grid-template-columns:repeat(2,1fr)}
   .grid2,.grid3{grid-template-columns:1fr}
 }
-/* ── Mobile Hamburger ─────────────────────────────────────────────── */
-.mob-btn{display:none;position:fixed;bottom:22px;left:18px;width:50px;height:50px;
-  border-radius:50%;background:#1a2f4e;color:#fff;border:2px solid rgba(255,255,255,.18);
-  font-size:1.35rem;cursor:pointer;z-index:600;
-  box-shadow:0 4px 16px rgba(0,0,0,.45);
-  align-items:center;justify-content:center;transition:background .15s}
-.mob-btn:hover{background:#2a4a7f}
-.mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:499}
-.mob-overlay.vis{display:block}
 @media(max-width:700px){
-  .mob-btn{display:flex}
-  .sidebar{transform:translateX(-220px);transition:transform .25s ease}
-  .sidebar.open{transform:translateX(0)}
-  header,#root,.filter-bar,main{margin-left:0!important}
   header{padding:10px 14px}
   header h1{font-size:.9rem}
   .hdr-sub{display:none}
@@ -210,53 +185,29 @@ main{padding:24px 28px;max-width:1400px;margin:0 auto}
   .kpi-row{grid-template-columns:1fr}
   .kpi-val{font-size:1.8rem}
 }
-/* ── Sidebar Navigation ───────────────────────────────────────────── */
-.sidebar{position:fixed;left:0;top:0;bottom:0;width:210px;background:#1a2f4e;
-  border-right:1px solid rgba(255,255,255,.08);overflow-y:auto;z-index:500;
-  display:flex;flex-direction:column}
-.sb-logo{padding:16px 16px 10px;border-bottom:1px solid rgba(255,255,255,.1)}
-.sb-logo h2{font-size:.88rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
-.sb-logo p{font-size:.68rem;color:rgba(255,255,255,.45);margin-top:2px}
-.sb-sec{padding:8px 12px 3px;font-size:.62rem;font-weight:700;text-transform:uppercase;
-  letter-spacing:1.2px;color:rgba(255,255,255,.35);margin-top:4px}
-.sb-link{display:flex;align-items:center;gap:9px;padding:7px 14px 7px 16px;
-  font-size:.78rem;color:rgba(255,255,255,.65);text-decoration:none;
-  border-left:3px solid transparent;transition:all .15s;cursor:pointer}
-.sb-link:hover{background:rgba(255,255,255,.07);color:#fff}
-.sb-link.active{background:rgba(255,255,255,.1);border-left-color:#68d391;
-  color:#fff;font-weight:600}
-.sb-divider{height:1px;background:rgba(255,255,255,.08);margin:6px 12px}
-header,#root,.filter-bar{margin-left:210px}
+/* ── Top-Nav ────────────────────────────────────────────────────────────── */
+.top-nav{background:#1a2f4e;display:flex;align-items:center;
+  overflow-x:auto;scrollbar-width:none;
+  border-bottom:1px solid rgba(255,255,255,.1);min-height:40px}
+.top-nav::-webkit-scrollbar{display:none}
+.top-nav>a,.top-nav .sb-link{display:inline-flex;align-items:center;gap:5px;
+  padding:10px 14px;font-size:.78rem;color:rgba(255,255,255,.6);text-decoration:none;
+  border-bottom:3px solid transparent;white-space:nowrap;transition:all .15s;cursor:pointer;
+  background:none;border-top:none;border-left:none;border-right:none;font-family:inherit}
+.top-nav>a:hover,.top-nav .sb-link:hover{color:#fff;background:rgba(255,255,255,.06)}
+.top-nav>a.active,.top-nav .sb-link.active{color:#fff;border-bottom-color:#68d391;
+  font-weight:600;background:rgba(255,255,255,.04)}
+.top-nav .nav-sep{width:1px;height:20px;background:rgba(255,255,255,.2);
+  margin:0 4px;flex-shrink:0;align-self:center}
+.nav-user{font-size:.72rem;color:rgba(255,255,255,.6);padding:0 8px;white-space:nowrap}
+.nav-logout{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  color:rgba(255,255,255,.7);padding:5px 12px;border-radius:6px;cursor:pointer;
+  font-size:.72rem;transition:all .15s;white-space:nowrap;margin-left:4px}
+.nav-logout:hover{background:rgba(255,255,255,.2);color:#fff}
 </style>
 </head>
 <body>
-<div class="mob-overlay" id="mobOv" onclick="mobToggle()"></div>
-<button class="mob-btn" id="mobBtn" onclick="mobToggle()">☰</button>
-<nav class="sidebar" id="mainSidebar">
-  <div class="sb-logo"><h2>🏗️ Hausbau</h2><p>Projekt-Übersicht</p></div>
-  <div class="sb-sec">Navigation</div>
-  <a class="sb-link" href="index.html">🏠 Checklisten</a>
-  <a class="sb-link" href="einkaufsliste.html">🛒 Einkaufsliste</a>
-  <a class="sb-link active" href="dashboard.html">📊 Dashboard</a>
-  <div class="sb-divider"></div>
-  <div class="sb-sec">Bereiche</div>
-  <a class="sb-link" id="sbAll"  onclick="sbFilter('all')" href="#">🌐 Alle Bereiche</a>
-  <a class="sb-link" id="sbHH"   onclick="sbFilter('HH - Haupthaus')" href="#">🏡 Haupthaus</a>
-  <a class="sb-link" id="sbELW"  onclick="sbFilter('ELW - Einliegerwohnung')" href="#">🏘️ Einliegerwohnung</a>
-  <a class="sb-link" id="sbDrau" onclick="sbFilter('Drausen - Aussenbereich')" href="#">🌳 Außenbereich</a>
-</nav>
-
-<div class="pw-modal hidden" id="pwModal">
-  <div class="pw-box">
-    <h2>🔒 Hausbau Dashboard</h2>
-    <p>Bitte Passwort eingeben.</p>
-    <input class="pw-inp" type="password" id="pwInput" placeholder="Passwort"
-      onkeydown="if(event.key==='Enter')doLogin()">
-    <div class="pw-err" id="pwErr">❌ Falsches Passwort</div>
-    <button class="pw-btn" onclick="doLogin()">Einloggen</button>
-  </div>
-</div>
-
+<div class="sticky-header">
 <header>
   <div>
     <h1>📊 Hausbau Dashboard</h1>
@@ -265,9 +216,19 @@ header,#root,.filter-bar{margin-left:210px}
   <div class="hdr-right">
     <div class="live-dot" title="Live-Daten"></div>
     <button class="refresh-btn" onclick="loadDashboard()">↻ Aktualisieren</button>
-    <a class="dash-link" href="index.html">📋 Checkliste</a>
   </div>
 </header>
+<nav class="top-nav">
+  <a href="index.html">🏠 Checklisten</a>
+  <a href="einkaufsliste.html">🛒 Einkauf</a>
+  <a href="finanzen.html">💶 Finanzen</a>
+  <a href="hausinfo.html">🏡 Haus-Info</a>
+  <a href="dashboard.html" class="active">📊 Dashboard</a>
+  <span class="nav-sep"></span>
+  <span class="nav-user" id="navUser"></span>
+  <button class="nav-logout" onclick="hausbauLogout()">⎋ Abmelden</button>
+</nav>
+</div>
 
 <div class="filter-bar">
   <button class="filter-tab active" onclick="setSection('all',this)">🌐 Alle</button>
@@ -287,38 +248,10 @@ const SB_URL = atob("aHR0cHM6Ly9raW1vZ3N3Y29udXhpanN6cXBxei5zdXBhYmFzZS5jbw==");
 const SB_KEY = atob("ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW10cGJXOW5jM2RqYjI1MWVHbHFjM3B4Y0hGNklpd2ljbTlzWlNJNkluTmxjblpwWTJWZmNtOXNaU0lzSW1saGRDSTZNVGMzTkRFNU56WXlOU3dpWlhod0lqb3lNRGc1Tnpjek5qSTFmUS56bXFtX2pSRzBYbkR3LVJhNE9mZkpYbENyVlBuSXlOWC0wRzA2ZVRzZG9B");
 const USERS  = [{"id": "lucian", "name": "Lucian", "initials": "L", "color": "#2c5282"}, {"id": "simona", "name": "Simona", "initials": "S", "color": "#744210"}, {"id": "justin", "name": "Justin", "initials": "J", "color": "#276749"}];
 const META   = {"HH - Haupthaus": {"icon": "🏡", "color": "#2c5282"}, "ELW - Einliegerwohnung": {"icon": "🏘️", "color": "#375623"}, "Drausen - Aussenbereich": {"icon": "🌳", "color": "#7b3f00"}, "_default": {"icon": "🏠", "color": "#4a5568"}};
-const PW_HASH = "";
+// auth-guard.js übernimmt die Authentifizierung (localStorage-Session)
 
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
-// ── Passwort ───────────────────────────────────────────────────────────────
-async function sha256(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-function isAuthed() {
-  if (!PW_HASH) return true;
-  return Date.now() < parseInt(localStorage.getItem('hb_auth_until')||'0');
-}
-async function doLogin() {
-  const h = await sha256(document.getElementById('pwInput').value);
-  if (h === PW_HASH) {
-    localStorage.setItem('hb_auth_until', Date.now()+30*24*60*60*1000);
-    document.getElementById('pwModal').classList.add('hidden');
-    document.getElementById('pwErr').style.display='none';
-    loadDashboard();
-  } else {
-    document.getElementById('pwErr').style.display='block';
-    document.getElementById('pwInput').value='';
-  }
-}
-function checkAuth() {
-  if (isAuthed()) loadDashboard();
-  else {
-    document.getElementById('pwModal').classList.remove('hidden');
-    setTimeout(()=>document.getElementById('pwInput').focus(),100);
-  }
-}
 
 // ── Globaler State ────────────────────────────────────────────────────────
 let _allTasks = [], _allChecks = [];
@@ -557,237 +490,91 @@ function render(tasks, checks) {
     const parts = c.task_key.split('||');
     const room = parts[2]||'', task = parts[3]||c.task_key;
     return `<div class="act-item">
-      <div class="act-avatar" style="background:${u.color}">${u.initials}</div>
+      <div class="act-avatar" style="background:u.color}">${u.initials}</div>
       <div class="act-info">
-        <div class="act-task" title="${esc(task)}">${esc(task.slice(0,55))}${task.length>55?'…':''}</div>
-        <div class="act-meta">${esc(room)} · ${u.name}</div>
+        <div class="act-task">${esc(room||'?')} • ${esc(task)}</div>
+        <div class="act-meta">${esc(c.checked_by||'?')} • ${esc(c.assigned_to||'—')}</div>
       </div>
       <div class="act-time">${relTime(c.updated_at)}</div>
     </div>`;
-  }).join('') || '<div style="padding:12px;color:#94a3b8;font-size:.8rem">Noch keine Aktivität.</div>';
+  }).join('') || '<div style="padding:12px;color:#94a3b8;font-size:.8rem">Keine Aktivität.</div>';
 
-  // ── Aufgaben-Übersicht ─────────────────────────────────────────────────
-  const taskOverviewHTML = buildTaskOverview(tasks, chkMap);
-
-  document.getElementById('root').innerHTML = `
-  <div class="kpi-row">
-    <div class="kpi blue">
-      <div class="kpi-val">${total}</div>
-      <div class="kpi-lbl">Aufgaben gesamt</div>
-      <div class="kpi-sub">inkl. eigene Aufgaben</div>
-    </div>
-    <div class="kpi green">
-      <div class="kpi-val">${done}</div>
-      <div class="kpi-lbl">Erledigt</div>
-      <div class="kpi-sub">${pct}% des Gesamtprojekts</div>
-    </div>
-    <div class="kpi red">
-      <div class="kpi-val">${open}</div>
-      <div class="kpi-lbl">Offen</div>
-      <div class="kpi-sub">${Object.keys(rooms).filter(k=>{const rm=rooms[k];return rm.total>rm.done}).length} Räume betroffen</div>
-    </div>
-    <div class="kpi gold">
-      <div class="kpi-val">${pct}%</div>
-      <div class="kpi-lbl">Gesamtfortschritt</div>
-      <div class="kpi-sub">Ziel: 100% 🏁</div>
-    </div>
-  </div>
-
+  // Build main HTML
+  const html = `
   <div class="grid2">
     <div class="card">
-      <div class="card-title"><span class="ico">🎯</span> Gesamtfortschritt</div>
+      <div class="card-title"><span class="ico">📊</span>Gesamtstatus</div>
       <div class="donut-wrap">
         <div class="donut">
           ${donutSVG}
           <div class="donut-center">
             <div class="donut-pct">${pct}%</div>
-            <div class="donut-sub">fertig</div>
+            <div class="donut-sub">Erledigt</div>
           </div>
         </div>
         <div class="donut-legend">
           <div class="dl-row">
             <div class="dl-dot" style="background:#22c55e"></div>
-            <span>Erledigt</span><span class="dl-val" style="color:#22c55e">${done}</span>
+            <div>Erledigt</div>
+            <div class="dl-val">${done}</div>
           </div>
           <div class="dl-row">
             <div class="dl-dot" style="background:#ef4444"></div>
-            <span>Offen</span><span class="dl-val" style="color:#ef4444">${open}</span>
+            <div>Offen</div>
+            <div class="dl-val">${open}</div>
           </div>
           <div class="dl-row">
-            <div class="dl-dot" style="background:#334155"></div>
-            <span>Gesamt</span><span class="dl-val">${total}</span>
+            <div class="dl-dot" style="background:#3b82f6"></div>
+            <div>Gesamt</div>
+            <div class="dl-val">${total}</div>
           </div>
         </div>
       </div>
     </div>
     <div class="card">
-      <div class="card-title"><span class="ico">🏗️</span> Fortschritt pro Bereich</div>
+      <div class="card-title"><span class="ico">📍</span>Nach Bereich</div>
       ${sectionBars}
     </div>
   </div>
 
   <div class="grid3">
     <div class="card">
-      <div class="card-title"><span class="ico">👥</span> Aufgaben pro Person</div>
+      <div class="card-title"><span class="ico">🏢</span>Nach Etage</div>
+      <div class="floor-grid">${floorBars}</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="ico">👥</span>Nach Person</div>
       <div class="person-grid">${personRows}</div>
     </div>
     <div class="card">
-      <div class="card-title"><span class="ico">🔴</span> Meiste offene Aufgaben</div>
+      <div class="card-title"><span class="ico">🔥</span>Top Räume (offen)</div>
       <div class="room-list">${openRooms}</div>
-    </div>
-    <div class="card">
-      <div class="card-title"><span class="ico">✅</span> Weiteste Räume</div>
-      <div class="room-list">${doneRooms}</div>
     </div>
   </div>
 
   <div class="grid2">
     <div class="card">
-      <div class="card-title"><span class="ico">📐</span> Fortschritt pro Etage</div>
-      <div class="floor-grid">${floorBars}</div>
+      <div class="card-title"><span class="ico">✅</span>Top Räume (fertig)</div>
+      <div class="room-list">${doneRooms}</div>
     </div>
     <div class="card">
-      <div class="card-title"><span class="ico">⚡</span> Letzte Aktivitäten</div>
+      <div class="card-title"><span class="ico">⏱️</span>Letzte Aktivität</div>
       <div class="activity-list">${actItems}</div>
     </div>
   </div>
+  `;
 
-  <div class="tasks-section">
-    <div class="card" style="margin-bottom:0;border-radius:12px 12px 0 0;padding:14px 18px 10px">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div class="card-title" style="margin-bottom:0">
-          <span class="ico">📋</span> Alle Aufgaben – Übersicht
-        </div>
-        <div style="font-size:.72rem;color:var(--muted)">${done} / ${total} erledigt</div>
-      </div>
-    </div>
-    ${taskOverviewHTML}
-  </div>`;
+  document.getElementById('root').innerHTML = html;
 }
 
-// ── Aufgaben-Übersicht ─────────────────────────────────────────────────────
-function buildTaskOverview(tasks, chkMap) {
-  const tkey = (s,f,r,t) => [s,f,r,t].join('||');
-  const esc2 = v => String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-
-  // Gruppieren: section → floor → room → [tasks]
-  const tree = {};
-  tasks.forEach(t => {
-    (tree[t.section] ??= {});
-    (tree[t.section][t.floor] ??= {});
-    (tree[t.section][t.floor][t.room] ??= []).push(t);
-  });
-
-  let html = '';
-  Object.entries(tree).forEach(([sec, floors]) => {
-    const m       = META[sec] || {icon:'🏠',color:'#3b82f6'};
-    const secAll  = tasks.filter(t => t.section === sec);
-    const secDone = secAll.filter(t => chkMap[tkey(t.section,t.floor,t.room,t.task_text)]?.checked).length;
-    const secPct  = secAll.length ? Math.round(secDone/secAll.length*100) : 0;
-    const secId   = 'sec_ov_' + sec.replace(/[^a-z0-9]/gi,'_');
-
-    html += `<div class="sec-block" id="${secId}">
-      <div class="sec-block-hdr" onclick="toggleSecBlock('${secId}')">
-        <span class="sec-block-ico">${m.icon}</span>
-        <span class="sec-block-name">${esc2(sec)}</span>
-        <div class="sec-block-prog">
-          <div class="sec-prog-bar"><div class="sec-prog-fill" style="width:${secPct}%"></div></div>
-          <span class="sec-prog-txt">${secDone}/${secAll.length}</span>
-        </div>
-        <span class="sec-arr">▾</span>
-      </div>
-      <div class="floor-group" id="${secId}_body">`;
-
-    Object.entries(floors).forEach(([floor, roomsObj]) => {
-      html += `<div class="floor-lbl">${esc2(floor)}</div>`;
-
-      Object.entries(roomsObj).forEach(([room, rtasks]) => {
-        const rid   = 'rm_ov_' + (sec+floor+room).replace(/[^a-z0-9]/gi,'_');
-        const rDone = rtasks.filter(t => chkMap[tkey(t.section,t.floor,t.room,t.task_text)]?.checked).length;
-        const rPct  = rtasks.length ? Math.round(rDone/rtasks.length*100) : 0;
-
-        html += `<div class="room-block">
-          <div class="room-name-row" onclick="toggleRoom('${rid}')">
-            <span class="room-toggle">▾</span>
-            <span style="flex:1">${esc2(room)}</span>
-            <span style="font-size:.65rem;color:var(--muted)">${rDone}/${rtasks.length} (${rPct}%)</span>
-          </div>
-          <div class="room-tasks" id="${rid}">`;
-
-        rtasks.forEach(t => {
-          const k   = tkey(t.section,t.floor,t.room,t.task_text);
-          const chk = chkMap[k];
-          const isDone = !!chk?.checked;
-          const u   = USERS.find(x => x.id === (chk?.assigned_to||''));
-          const who = u
-            ? `<div class="task-who" style="background:${u.color}" title="${u.name}">${u.initials}</div>`
-            : '';
-          const tname = t.task_text.length > 62
-            ? esc2(t.task_text.slice(0,60)) + '…'
-            : esc2(t.task_text);
-          html += `<div class="task-row">
-            <div class="task-chk ${isDone?'done':'open'}">${isDone?'✓':''}</div>
-            <span class="task-name${isDone?' done':''}" title="${esc2(t.task_text)}">${tname}</span>
-            ${who}
-          </div>`;
-        });
-
-        html += `</div></div>`;  // room-tasks, room-block
-      });
-    });
-
-    html += `</div></div>`;  // floor-group, sec-block
-  });
-  return html || '<div style="padding:20px;color:var(--muted);text-align:center">Keine Aufgaben gefunden.</div>';
+// ── Init ──────────────────────────────────────────────────────────────────
+function init() {
+  loadDashboard();
+  setInterval(() => { loadDashboard(); }, 30000);
 }
 
-function toggleSecBlock(id) {
-  const el   = document.getElementById(id);
-  const body = document.getElementById(id+'_body');
-  if (!el || !body) return;
-  el.classList.toggle('collapsed');
-  body.style.display = el.classList.contains('collapsed') ? 'none' : '';
-}
-function toggleRoom(id) {
-  const el  = document.getElementById(id);
-  const row = el?.previousElementSibling;
-  if (!el || !row) return;
-  el.classList.toggle('hidden');
-  row.classList.toggle('collapsed');
-}
-
-// ── Realtime ──────────────────────────────────────────────────────────────
-function subscribeRealtime() {
-  sb.channel('dashboard').on('postgres_changes',
-    {event:'*',schema:'public',table:'hausbau_checks'},
-    () => loadDashboard()
-  ).subscribe();
-}
-
-// ── Sidebar Bereichs-Filter ────────────────────────────────
-function sbFilter(sec) {
-  ['sbAll','sbHH','sbELW','sbDrau'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('active');
-  });
-  const map = {'all':'sbAll','HH - Haupthaus':'sbHH',
-    'ELW - Einliegerwohnung':'sbELW','Drausen - Aussenbereich':'sbDrau'};
-  const el = document.getElementById(map[sec]);
-  if (el) el.classList.add('active');
-  const tab = [...document.querySelectorAll('.filter-tab')]
-    .find(b => b.getAttribute('onclick')?.includes(JSON.stringify(sec)));
-  if (tab) setSection(sec, tab); else setSection(sec, null);
-}
-
-// ── Mobile Sidebar ────────────────────────────────────────────────────────
-function mobToggle() {
-  document.getElementById('mainSidebar').classList.toggle('open');
-  document.getElementById('mobOv').classList.toggle('vis');
-}
-
-// ── Start ─────────────────────────────────────────────────────────────────
-checkAuth();
-subscribeRealtime();
+window.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
