@@ -160,41 +160,27 @@ main{max-width:600px;margin:36px auto;padding:0 20px 60px}
 </main>
 
 <script>
-const COLORS = {
-  lucian: '#2c5282',
-  simona: '#744210',
-  justin: '#276749',
-};
-
 // ── Profil laden ─────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async function() {
-  // Warte bis auth-guard fertig ist
-  const waitForUser = () => new Promise(resolve => {
-    if (window._user) return resolve(window._user);
-    const iv = setInterval(() => {
-      if (window._user) { clearInterval(iv); resolve(window._user); }
-    }, 50);
-    setTimeout(() => { clearInterval(iv); resolve(null); }, 3000);
-  });
-
-  const user = await waitForUser();
+  const user = window._user;   // gesetzt von auth-guard.js (synchron)
   if (!user) return;
 
-  const raw  = (user.email || '').split('@')[0].toLowerCase();
-  const name = raw.charAt(0).toUpperCase() + raw.slice(1);
-  const color = COLORS[raw] || '#4a5568';
-  const initials = name.charAt(0).toUpperCase();
+  document.getElementById('avatarRing').textContent = user.initialen || user.name.charAt(0);
+  document.getElementById('avatarRing').style.background = user.farbe || '#4a5568';
+  document.getElementById('profileName').textContent = user.name;
+  document.getElementById('profileEmail').textContent = user.id;
 
-  document.getElementById('avatarRing').textContent = initials;
-  document.getElementById('avatarRing').style.background = color;
-  document.getElementById('profileName').textContent = name;
-  document.getElementById('profileEmail').textContent = user.email;
-
-  // Gespeicherte Recovery-E-Mail laden
-  const meta = user.user_metadata || {};
-  if (meta.recovery_email) {
-    document.getElementById('recoveryEmail').value = meta.recovery_email;
-  }
+  // Recovery-E-Mail aus hausbau_benutzer laden
+  try {
+    const { data } = await window._sb
+      .from('hausbau_benutzer')
+      .select('recovery_email')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (data && data.recovery_email) {
+      document.getElementById('recoveryEmail').value = data.recovery_email;
+    }
+  } catch(_) {}
 });
 
 // ── E-Mail speichern ──────────────────────────────────────────────────────────
@@ -216,13 +202,12 @@ async function saveEmail() {
   btn.innerHTML = '<span class="spinner"></span>Speichern…';
 
   try {
-    const { error } = await window._sb.auth.updateUser({
-      data: { recovery_email: email }
-    });
+    const { error } = await window._sb
+      .from('hausbau_benutzer')
+      .update({ recovery_email: email })
+      .eq('id', window._user.id);
     if (error) throw error;
     ok.classList.add('show');
-    // Lokalen User aktualisieren
-    if (window._user) window._user.user_metadata = { ...window._user.user_metadata, recovery_email: email };
   } catch(e) {
     err.textContent = 'Fehler: ' + (e.message || 'Unbekannter Fehler');
     err.classList.add('show');
@@ -239,6 +224,12 @@ function checkStrength(pw) {
   const strong = pw.length >= 10 && /[A-Z]/.test(pw) && /[0-9]/.test(pw);
   const ok     = pw.length >= 8;
   bar.className = 'pw-strength ' + (strong ? 'strong' : ok ? 'ok' : 'weak');
+}
+
+// SHA-256 mit Benutzer-ID als Salt (gleiche Funktion wie in login.html)
+async function sha256hex(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 // ── Passwort ändern ───────────────────────────────────────────────────────────
@@ -268,7 +259,11 @@ async function changePassword() {
   btn.innerHTML = '<span class="spinner"></span>Speichern…';
 
   try {
-    const { error } = await window._sb.auth.updateUser({ password: pw1 });
+    const hash = await sha256hex(window._user.id + ':' + pw1);
+    const { error } = await window._sb
+      .from('hausbau_benutzer')
+      .update({ pw_hash: hash })
+      .eq('id', window._user.id);
     if (error) throw error;
     ok.classList.add('show');
     document.getElementById('newPw').value  = '';
