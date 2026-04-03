@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Anmelden – Hausbau</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Segoe UI',Arial,sans-serif;
+  background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 60%,#2c5282 100%);
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:20px;
+}
+.logo{text-align:center;margin-bottom:32px;color:#fff}
+.logo-icon{font-size:3rem;margin-bottom:10px}
+.logo h1{font-size:1.6rem;font-weight:800;letter-spacing:-.5px}
+.logo p{font-size:.85rem;color:rgba(255,255,255,.55);margin-top:4px}
+.card{
+  background:#1e293b;border:1px solid #334155;border-radius:18px;
+  padding:36px 40px;width:100%;max-width:400px;
+  box-shadow:0 24px 64px rgba(0,0,0,.5);
+}
+.card h2{font-size:1.1rem;font-weight:700;color:#e2e8f0;margin-bottom:6px}
+.card p{font-size:.8rem;color:#64748b;margin-bottom:28px;line-height:1.5}
+.field{margin-bottom:18px}
+.field label{display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.8px;color:#94a3b8;margin-bottom:7px}
+.field input{
+  width:100%;padding:12px 14px;background:#0f172a;
+  border:1.5px solid #334155;border-radius:10px;
+  color:#e2e8f0;font-size:.9rem;outline:none;transition:border-color .15s;
+  font-family:inherit;
+}
+.field input:focus{border-color:#3b82f6}
+.field input::placeholder{color:#475569}
+.suffix-wrap{position:relative}
+.suffix-wrap input{padding-right:112px}
+.suffix{
+  position:absolute;right:14px;top:50%;transform:translateY(-50%);
+  font-size:.78rem;color:#475569;pointer-events:none;white-space:nowrap
+}
+.btn{
+  width:100%;padding:13px;background:#2c5282;color:#fff;border:none;
+  border-radius:10px;font-size:.95rem;font-weight:700;cursor:pointer;
+  transition:background .15s;margin-top:4px;letter-spacing:.2px
+}
+.btn:hover{background:#2a4a7f}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.err{
+  background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);
+  color:#fca5a5;border-radius:9px;padding:10px 14px;
+  font-size:.8rem;margin-bottom:16px;display:none;line-height:1.5
+}
+.err.show{display:block}
+.spinner{
+  display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);
+  border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;
+  vertical-align:middle;margin-right:7px
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.footer{
+  margin-top:28px;text-align:center;font-size:.72rem;color:rgba(255,255,255,.3);
+}
+@media(max-width:440px){
+  .card{padding:28px 22px}
+  .logo h1{font-size:1.35rem}
+}
+</style>
+</head>
+<body>
+
+<div class="logo">
+  <div class="logo-icon">🏠</div>
+  <h1>Hausbau Projekt</h1>
+  <p>Bitte melde dich an, um fortzufahren</p>
+</div>
+
+<div class="card">
+  <h2>Anmelden</h2>
+  <p>Gib deinen Namen und dein Passwort ein.</p>
+
+  <div class="err" id="errBox"></div>
+
+  <div class="field">
+    <label>Name</label>
+    <div class="suffix-wrap">
+      <input type="text" id="nameInp" placeholder="z. B. Lucian"
+        autocomplete="username" autocapitalize="off" spellcheck="false"
+        onkeydown="if(event.key==='Enter')document.getElementById('pwInp').focus()">
+      <span class="suffix">@hausbau.local</span>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Passwort</label>
+    <input type="password" id="pwInp" placeholder="••••••••"
+      autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')doLogin()">
+  </div>
+
+  <button class="btn" id="loginBtn" onclick="doLogin()">Anmelden</button>
+</div>
+
+<div class="footer">🔒 Geschützter Bereich · Nur für Projektmitglieder</div>
+
+<script>
+const SB_URL = atob("aHR0cHM6Ly9raW1vZ3N3Y29udXhpanN6cXBxei5zdXBhYmFzZS5jbw==");
+const SB_KEY = atob("ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW10cGJXOW5jM2RqYjI1MWVHbHFjM3p4Y0hGNklpd2ljbTlzWlNJNkluTmxjblpwWTJWZmNtOXNaU0lzSW1saGRDSTZNVGMzTkRFNU56WXlOU3dpWlhod0lqb3lNRGc1Tnpjek5qSTFmUS56bXFtX2pSRzBYbkR3LVJhNE9mZkpYbENyVlBuSXlOWC0wRzA2ZVRzZG9B");
+const sb = window.supabase.createClient(SB_URL, SB_KEY);
+
+// Bereits eingeloggt? → direkt weiterleiten
+(async function() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) redirect();
+})();
+
+function redirect() {
+  const params = new URLSearchParams(location.search);
+  const next = params.get("next");
+  // Nur relative URLs aus demselben Ursprung zulassen
+  if (next) {
+    try {
+      const url = new URL(decodeURIComponent(next));
+      if (url.origin === location.origin) { location.replace(url.href); return; }
+    } catch(_) {
+      const rel = decodeURIComponent(next);
+      if (!rel.startsWith("http")) { location.replace(rel); return; }
+    }
+  }
+  location.replace("index.html");
+}
+
+async function doLogin() {
+  const btn  = document.getElementById("loginBtn");
+  const err  = document.getElementById("errBox");
+  const name = document.getElementById("nameInp").value.trim().toLowerCase();
+  const pw   = document.getElementById("pwInp").value;
+
+  err.classList.remove("show");
+
+  if (!name) {
+    err.textContent = "Bitte deinen Namen eingeben.";
+    err.classList.add("show");
+    document.getElementById("nameInp").focus();
+    return;
+  }
+  if (!pw) {
+    err.textContent = "Bitte dein Passwort eingeben.";
+    err.classList.add("show");
+    document.getElementById("pwInp").focus();
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Anmelden…';
+
+  const email = name + "@hausbau.local";
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+
+  if (error) {
+    btn.disabled = false;
+    btn.textContent = "Anmelden";
+    err.textContent = "Anmeldung fehlgeschlagen. Bitte Name und Passwort prüfen.";
+    err.classList.add("show");
+    document.getElementById("pwInp").select();
+    return;
+  }
+
+  redirect();
+}
+
+// Fokus auf Namensfeld beim Laden
+window.addEventListener("load", function() {
+  document.getElementById("nameInp").focus();
+});
+</script>
+</body>
+</html>
