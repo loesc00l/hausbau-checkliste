@@ -112,22 +112,12 @@ body{
 
 <!-- Reset-Bereich -->
 <div class="card" id="resetCard" style="display:none;margin-top:16px">
-  <h2>🔑 Passwort zurücksetzen</h2>
-  <p>Gib deinen Namen ein. Wir schicken dir einen Reset-Link an deine hinterlegte E-Mail-Adresse.</p>
-  <div class="err" id="resetErr"></div>
-  <div class="err" id="resetOk"
-    style="background:rgba(72,187,120,.12);border-color:rgba(72,187,120,.3);color:#c6f6d5"></div>
-  <div class="field" style="margin-top:16px">
-    <label>Name</label>
-    <div class="suffix-wrap">
-      <input type="text" id="resetName" placeholder="z. B. Lucian"
-        autocapitalize="off" spellcheck="false"
-        onkeydown="if(event.key==='Enter')doReset()">
-      <span class="suffix">@hausbau.local</span>
-    </div>
-  </div>
-  <button class="btn" id="resetBtn" onclick="doReset()">Reset-Link senden</button>
-  <div style="text-align:center;margin-top:14px">
+  <h2>🔑 Passwort vergessen?</h2>
+  <p style="line-height:1.7">Passwort-Reset direkt im Profil möglich, sobald du eingeloggt bist.<br>
+  Falls du nicht mehr reinkommst, wende dich an:<br>
+  <strong style="color:#94a3b8">loesch.lucian@gmail.com</strong><br>
+  — er kann dein Passwort per <code style="color:#68d391;font-size:.78rem">benutzer_anlegen.py</code> zurücksetzen.</p>
+  <div style="text-align:center;margin-top:18px">
     <button onclick="hideReset()" style="background:none;border:none;color:#64748b;
       font-size:.78rem;cursor:pointer;text-decoration:underline;font-family:inherit">
       Zurück zum Login
@@ -138,14 +128,24 @@ body{
 <div class="footer">🔒 Geschützter Bereich · Nur für Projektmitglieder</div>
 
 <script>
+// ── Supabase nur fuer Tabellen-Zugriff (kein Auth) ────────────────────────────
 const SB_URL = atob("aHR0cHM6Ly9raW1vZ3N3Y29udXhpanN6cXBxei5zdXBhYmFzZS5jbw==");
 const SB_KEY = atob("ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW10cGJXOW5jM2RqYjI1MWVHbHFjM3B4Y0hGNklpd2ljbTlzWlNJNkluTmxjblpwWTJWZmNtOXNaU0lzSW1saGRDSTZNVGMzTkRFNU56WXlOU3dpWlhod0lqb3lNRGc1Tnpjek5qSTFmUS56bXFtX2pSRzBYbkR3LVJhNE9mZkpYbENyVlBuSXlOWC0wRzA2ZVRzZG9B");
 const sb = window.supabase.createClient(SB_URL, SB_KEY);
+const SESSION_KEY = "hb_user";
+
+// SHA-256 Hash mit Benutzer-ID als Salt: sha256(id:passwort)
+async function sha256hex(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
 
 // Bereits eingeloggt? → direkt weiterleiten
-(async function() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) redirect();
+(function() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SESSION_KEY));
+    if (s && s.id) redirect();
+  } catch(_) {}
 })();
 
 function redirect() {
@@ -188,32 +188,42 @@ async function doLogin() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>Anmelden…';
 
-  const email = name + "@hausbau.local";
-  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  try {
+    const hash = await sha256hex(name + ":" + pw);
+    const { data, error } = await sb
+      .from("hausbau_benutzer")
+      .select("id,name,farbe,initialen")
+      .eq("id", name)
+      .eq("pw_hash", hash)
+      .maybeSingle();
 
-  if (error) {
+    if (error) throw error;
+
+    if (!data) {
+      btn.disabled = false;
+      btn.textContent = "Anmelden";
+      err.textContent = "Falscher Benutzername oder falsches Passwort.";
+      err.classList.add("show");
+      document.getElementById("pwInp").select();
+      return;
+    }
+
+    // Session in localStorage speichern
+    localStorage.setItem(SESSION_KEY, JSON.stringify({
+      id:       data.id,
+      name:     data.name,
+      farbe:    data.farbe  || "#3182ce",
+      initialen: data.initialen || data.name.charAt(0).toUpperCase(),
+    }));
+    redirect();
+
+  } catch(e) {
     btn.disabled = false;
     btn.textContent = "Anmelden";
-    let msg = "Anmeldung fehlgeschlagen.";
-    if (error.message) {
-      if (error.message.includes("Invalid login credentials")) {
-        msg = "Falscher Name oder falsches Passwort.";
-      } else if (error.message.includes("Invalid API key") || error.message.includes("apikey")) {
-        msg = "⚠️ Konfigurationsfehler: Ungültiger API-Key. Bitte deploy_zu_github.py ausführen.";
-      } else if (error.message.includes("Email not confirmed")) {
-        msg = "⚠️ E-Mail nicht bestätigt. Bitte benutzer_anlegen.py erneut ausführen.";
-      } else {
-        msg = "Fehler: " + error.message;
-      }
-    }
-    err.textContent = msg;
+    err.textContent = "Fehler: " + (e.message || "Verbindungsfehler. Bitte erneut versuchen.");
     err.classList.add("show");
-    document.getElementById("pwInp").select();
-    console.error("Login-Fehler:", error);
-    return;
+    console.error("Login-Fehler:", e);
   }
-
-  redirect();
 }
 
 // Fokus auf Namensfeld beim Laden
@@ -224,58 +234,11 @@ window.addEventListener("load", function() {
 // ── Passwort-Reset ────────────────────────────────────────────────────────────
 function showReset() {
   document.getElementById("resetCard").style.display = "block";
-  document.getElementById("resetName").focus();
   window.scrollTo({top: document.body.scrollHeight, behavior: "smooth"});
 }
 function hideReset() {
   document.getElementById("resetCard").style.display = "none";
-  document.getElementById("resetErr").classList.remove("show");
-  document.getElementById("resetOk").classList.remove("show");
   document.getElementById("nameInp").focus();
-}
-
-async function doReset() {
-  const btn  = document.getElementById("resetBtn");
-  const name = document.getElementById("resetName").value.trim().toLowerCase();
-  const err  = document.getElementById("resetErr");
-  const ok   = document.getElementById("resetOk");
-  err.classList.remove("show");
-  ok.classList.remove("show");
-
-  if (!name) {
-    err.textContent = "Bitte deinen Namen eingeben.";
-    err.classList.add("show");
-    return;
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Senden…';
-
-  // Supabase: Benutzer-Metadaten abrufen um echte E-Mail zu holen
-  // Da wir nicht eingeloggt sind, nutzen wir resetPasswordForEmail mit der @hausbau.local Adresse.
-  // Supabase leitet den Reset-Link dann an die in den User-Metadaten hinterlegte recovery_email weiter –
-  // ODER wir zeigen eine Anleitung falls keine hinterlegt ist.
-  const hausbauEmail = name + "@hausbau.local";
-
-  try {
-    const { error } = await sb.auth.resetPasswordForEmail(hausbauEmail, {
-      redirectTo: location.origin + location.pathname.replace("login.html", "profil.html")
-    });
-
-    if (error) throw error;
-
-    ok.textContent = "✅ Falls eine E-Mail hinterlegt ist, erhältst du jetzt einen Reset-Link. Bitte auch den Spam-Ordner prüfen.";
-    ok.classList.add("show");
-  } catch(e) {
-    // Fallback: Admin kontaktieren
-    err.innerHTML = "Kein Reset möglich (noch keine E-Mail hinterlegt).<br>" +
-      "Bitte wende dich an den Admin: <strong>loesch.lucian@gmail.com</strong><br>" +
-      "oder melde dich kurz mit dem alten Passwort an und hinterlege deine E-Mail unter <em>Mein Profil</em>.";
-    err.classList.add("show");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Reset-Link senden";
-  }
 }
 </script>
 </body>
