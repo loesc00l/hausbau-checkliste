@@ -194,9 +194,22 @@ async function doLogin() {
   if (error) {
     btn.disabled = false;
     btn.textContent = "Anmelden";
-    err.textContent = "Anmeldung fehlgeschlagen. Bitte Name und Passwort prüfen.";
+    let msg = "Anmeldung fehlgeschlagen.";
+    if (error.message) {
+      if (error.message.includes("Invalid login credentials")) {
+        msg = "Falscher Name oder falsches Passwort.";
+      } else if (error.message.includes("Invalid API key") || error.message.includes("apikey")) {
+        msg = "⚠️ Konfigurationsfehler: Ungültiger API-Key. Bitte deploy_zu_github.py ausführen.";
+      } else if (error.message.includes("Email not confirmed")) {
+        msg = "⚠️ E-Mail nicht bestätigt. Bitte benutzer_anlegen.py erneut ausführen.";
+      } else {
+        msg = "Fehler: " + error.message;
+      }
+    }
+    err.textContent = msg;
     err.classList.add("show");
     document.getElementById("pwInp").select();
+    console.error("Login-Fehler:", error);
     return;
   }
 
