@@ -4,13 +4,34 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Hausbau Checklisten</title>
+<style>html{visibility:hidden}</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth-guard.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#2d3748;min-height:100vh}
+
+/* ── Sticky Top-Nav ───────────────────────────────────────────────── */
+.sticky-header{position:sticky;top:0;z-index:300}
 header{background:#2c5282;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;
-  box-shadow:0 2px 8px rgba(0,0,0,.18);position:sticky;top:0;z-index:300}
-header h1{font-size:1.25rem;font-weight:700}
+  box-shadow:0 2px 8px rgba(0,0,0,.18)}
+header h1{font-size:1.15rem;font-weight:700}
+.top-nav{background:#1a2f4e;display:flex;align-items:center;gap:2px;
+  padding:0 16px;overflow-x:auto;white-space:nowrap}
+.top-nav::-webkit-scrollbar{display:none}
+.top-nav>a{display:inline-flex;align-items:center;gap:5px;padding:9px 13px;
+  color:rgba(255,255,255,.65);text-decoration:none;font-size:.78rem;border-bottom:2px solid transparent;
+  transition:all .15s;white-space:nowrap}
+.top-nav>a:hover{color:#fff;background:rgba(255,255,255,.07)}
+.top-nav>a.active{color:#fff;border-bottom-color:#68d391;font-weight:600}
+.nav-sep{flex:1}
+.nav-user{font-size:.72rem;color:rgba(255,255,255,.6);padding:0 8px}
+.nav-logout{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  color:rgba(255,255,255,.8);padding:5px 12px;border-radius:6px;font-size:.75rem;
+  cursor:pointer;transition:all .15s;white-space:nowrap}
+.nav-logout:hover{background:rgba(255,255,255,.2);color:#fff}
+
+/* ── Header Extras ───────────────────────────────────────────────── */
 .hdr-sub{font-size:.78rem;opacity:.7;margin-top:2px}
 .hdr-right{margin-left:auto;display:flex;align-items:center;gap:14px}
 .prog-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
@@ -24,23 +45,9 @@ header h1{font-size:1.25rem;font-weight:700}
 .uname{font-size:.8rem;font-weight:600}
 .dot{width:7px;height:7px;border-radius:50%;background:#68d391;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.sidebar{position:fixed;left:0;top:0;bottom:0;width:210px;background:#1a2f4e;
-  border-right:1px solid rgba(255,255,255,.08);overflow-y:auto;z-index:200;
-  display:flex;flex-direction:column}
-.sb-logo{padding:16px 16px 10px;border-bottom:1px solid rgba(255,255,255,.1)}
-.sb-logo h2{font-size:.88rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
-.sb-logo p{font-size:.68rem;color:rgba(255,255,255,.45);margin-top:2px}
-.sb-sec{padding:8px 12px 3px;font-size:.62rem;font-weight:700;text-transform:uppercase;
-  letter-spacing:1.2px;color:rgba(255,255,255,.35);margin-top:4px}
-.sb-link{display:flex;align-items:center;gap:9px;padding:7px 14px 7px 16px;
-  font-size:.78rem;color:rgba(255,255,255,.65);text-decoration:none;
-  border-left:3px solid transparent;transition:all .15s}
-.sb-link:hover{background:rgba(255,255,255,.07);color:#fff}
-.sb-link.active{background:rgba(255,255,255,.1);border-left-color:#68d391;
-  color:#fff;font-weight:600}
-.sb-divider{height:1px;background:rgba(255,255,255,.08);margin:6px 12px}
-.mp{margin-left:auto;font-size:.65rem;color:rgba(255,255,255,.3)}
-.main{margin-left:210px;padding:22px 26px;max-width:1080px}
+
+/* ── Main Layout ─────────────────────────────────────────────────── */
+.main{padding:22px 26px;max-width:1080px;margin:0 auto}
 .sec-hdr{display:flex;align-items:center;gap:10px;margin:26px 0 12px;
   padding-bottom:8px;border-bottom:2px solid #e2e8f0}
 .sec-hdr:first-of-type{margin-top:0}
@@ -115,12 +122,6 @@ header h1{font-size:1.25rem;font-weight:700}
 .assign-mi:hover{background:#f0f4f8}
 .assign-mi .oa{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;
   justify-content:center;font-size:.58rem;font-weight:700;color:#fff;flex-shrink:0}
-.pw-inp{width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;
-  font-size:.9rem;outline:none;margin-bottom:8px;transition:border-color .15s}
-.pw-inp:focus{border-color:#3182ce}
-.pw-btn{width:100%;padding:10px;background:#2c5282;color:#fff;border:none;
-  border-radius:8px;font-size:.9rem;cursor:pointer;font-weight:600;transition:background .15s}
-.pw-btn:hover{background:#2a4a7f}
 .detail-btn{background:none;border:none;color:#a0aec0;cursor:pointer;font-size:.8rem;
   padding:2px 5px;border-radius:4px;transition:color .15s;flex-shrink:0;line-height:1}
 .detail-btn:hover{color:#3182ce}
@@ -186,36 +187,16 @@ header h1{font-size:1.25rem;font-weight:700}
   border-radius:8px;cursor:pointer;transition:all .15s;font-size:.78rem;color:#718096}
 .none-opt:hover{border-color:#e2e8f0;background:#f7fafc}
 .none-opt.selected{border-color:#e2e8f0;background:#f7fafc}
-/* ── Mobile Hamburger ─────────────────────────────────────────────── */
-.mob-btn{display:none;position:fixed;bottom:22px;left:18px;width:50px;height:50px;
-  border-radius:50%;background:#1a2f4e;color:#fff;border:2px solid rgba(255,255,255,.18);
-  font-size:1.35rem;cursor:pointer;z-index:600;
-  box-shadow:0 4px 16px rgba(0,0,0,.45);
-  align-items:center;justify-content:center;transition:background .15s}
-.mob-btn:hover{background:#2a4a7f}
-.mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:499}
-.mob-overlay.vis{display:block}
 @media(max-width:700px){
-  .mob-btn{display:flex}
-  .sidebar{transform:translateX(-220px);transition:transform .25s ease}
-  .sidebar.open{transform:translateX(0)}
-  .main{margin-left:0!important;padding:8px!important}
-  header{margin-left:0!important;padding:10px 14px}
+  .main{padding:8px!important}
   header h1{font-size:.92rem}
   .hdr-sub{display:none}
   .hdr-right .dash-btn{display:none}
-  .filter-bar{margin-left:0!important;padding:6px 8px;gap:5px;flex-wrap:wrap}
-  .filter-bar select,.search-inp{font-size:.8rem;padding:5px 8px}
-  .search-inp{width:100%;min-width:0}
   .grid{grid-template-columns:1fr}
   .card-hdr{padding:10px 12px}
   .sec-ttl{font-size:1rem}
   .floor-lbl{font-size:.65rem;padding:2px 7px}
-  .task-item{padding:8px 10px}
-  .task-txt{font-size:.8rem}
-  .chk{width:22px;height:22px;flex-shrink:0}
   .assign-badge{width:20px;height:20px;font-size:.48rem}
-  .mini-prog{display:none}
   .drawer{width:100vw;max-width:100vw;border-radius:0}
   .drawer-body{padding:14px}
   .drawer-head{padding:14px}
@@ -224,59 +205,39 @@ header h1{font-size:1.25rem;font-weight:700}
 }
 @media(max-width:400px){
   .floor-lbl{display:none}
-  .task-txt{font-size:.76rem}
 }
-
-/* ── Sidebar Navigation ───────────────────────────────────────────── */
-.sidebar{position:fixed;left:0;top:0;bottom:0;width:210px;background:#1a2f4e;
-  border-right:1px solid rgba(255,255,255,.08);overflow-y:auto;z-index:200;
-  display:flex;flex-direction:column}
-.sb-logo{padding:16px 16px 10px;border-bottom:1px solid rgba(255,255,255,.1)}
-.sb-logo h2{font-size:.88rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
-.sb-logo p{font-size:.68rem;color:rgba(255,255,255,.45);margin-top:2px}
-.sb-sec{padding:8px 12px 3px;font-size:.62rem;font-weight:700;text-transform:uppercase;
-  letter-spacing:1.2px;color:rgba(255,255,255,.35);margin-top:4px}
-.sb-link{display:flex;align-items:center;gap:9px;padding:7px 14px 7px 16px;
-  font-size:.78rem;color:rgba(255,255,255,.65);text-decoration:none;
-  border-left:3px solid transparent;transition:all .15s;cursor:pointer}
-.sb-link:hover{background:rgba(255,255,255,.07);color:#fff}
-.sb-link.active{background:rgba(255,255,255,.1);border-left-color:#68d391;
-  color:#fff;font-weight:600}
-.sb-divider{height:1px;background:rgba(255,255,255,.08);margin:6px 12px}
-header,#root,.filter-bar{margin-left:210px}
 </style>
 </head>
 <body>
-<div class="mob-overlay" id="mobOv" onclick="mobToggle()"></div>
-<button class="mob-btn" id="mobBtn" onclick="mobToggle()">☰</button>
-<nav class="sidebar" id="mainSidebar">
-  <div class="sb-logo"><h2>🏗️ Hausbau</h2><p>Projekt-Übersicht</p></div>
-  <div class="sb-sec">Navigation</div>
-  <a class="sb-link active" href="index.html">🏠 Checklisten</a>
-  <a class="sb-link" href="einkaufsliste.html">🛒 Einkaufsliste</a>
-  <a class="sb-link" href="dashboard.html">📊 Dashboard</a>
-  <div class="sb-divider"></div>
-  <div class="sb-sec">Bereiche</div>
-  <div id="sb"></div>
-</nav>
 
-<div class="modal-bg hidden" id="pwModal">
-  <div class="modal">
-    <h2>🔒 Hausbau Checkliste</h2>
-    <p>Bitte Passwort eingeben um fortzufahren.</p>
-    <input class="pw-inp" type="password" id="pwInput" placeholder="Passwort"
-      onkeydown="if(event.key==='Enter')doLogin()">
-    <div id="pwErr" style="color:#c53030;font-size:.75rem;margin-bottom:10px;display:none">
-      ❌ Falsches Passwort
-    </div>
-    <button class="pw-btn" onclick="doLogin()">Einloggen</button>
+<div class="sticky-header">
+<header>
+  <div>
+    <h1>🏠 Hausbau Checklisten</h1>
   </div>
+  <div class="hdr-right">
+    <div class="prog-wrap">
+      <span id="progTxt">Lade…</span>
+      <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+    </div>
+  </div>
+</header>
+<nav class="top-nav">
+  <a href="index.html" class="active">🏠 Checklisten</a>
+  <a href="einkaufsliste.html">🛒 Einkauf</a>
+  <a href="finanzen.html">💶 Finanzen</a>
+  <a href="hausinfo.html">🏡 Haus-Info</a>
+  <a href="dashboard.html">📊 Dashboard</a>
+  <span class="nav-sep"></span>
+  <span class="nav-user" id="navUser"></span>
+  <button class="nav-logout" onclick="hausbauLogout()">⎋ Abmelden</button>
+</nav>
 </div>
 
 <div class="modal-bg hidden" id="userModal">
   <div class="modal">
-    <h2>👋 Wer bist du?</h2>
-    <p>Wähle deinen Namen – deine Häkchen sind dann für alle sichtbar.</p>
+    <h2>👋 Als wer möchtest du abhaken?</h2>
+    <p>Du bist als <strong id="loggedInName"></strong> eingeloggt. Wähle, wessen Häkchen gesetzt werden soll.</p>
     <div id="userOpts"></div>
   </div>
 </div>
@@ -341,25 +302,6 @@ header,#root,.filter-bar{margin-left:210px}
 
 <div class="sync-badge" id="syncBadge">⟳ Synchronisiere…</div>
 
-<header>
-  <div>
-    <h1>🏠 Hausbau Checklisten</h1>
-    <div class="hdr-sub">Echtzeit-Sync · loesc00l.github.io/hausbau-checkliste</div>
-  </div>
-  <div class="hdr-right">
-    <div class="prog-wrap">
-      <span id="progTxt">Lade…</span>
-      <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
-    </div>
-    <a class="dash-btn" href="dashboard.html">📊 Dashboard</a>
-    <div class="user-badge" onclick="document.getElementById('userModal').classList.remove('hidden')" id="userBadge">
-      <div class="avatar" id="hdrAvatar" style="background:#718096">?</div>
-      <span class="uname" id="hdrName">Auswählen</span>
-      <div class="dot"></div>
-    </div>
-  </div>
-</header>
-
 <main class="main" id="main">
   <div class="toolbar">
     <input class="srch" type="text" placeholder="🔍 Suchen…" oninput="onSearch(this.value)">
@@ -377,10 +319,9 @@ const SB_URL  = atob("aHR0cHM6Ly9raW1vZ3N3Y29udXhpanN6cXBxei5zdXBhYmFzZS5jbw==")
 const SB_KEY  = atob("ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW10cGJXOW5jM2RqYjI1MWVHbHFjM3B4Y0hGNklpd2ljbTlzWlNJNkluTmxjblpwWTJWZmNtOXNaU0lzSW1saGRDSTZNVGMzTkRFNU56WXlOU3dpWlhod0lqb3lNRGc1Tnpjek5qSTFmUS56bXFtX2pSRzBYbkR3LVJhNE9mZkpYbENyVlBuSXlOWC0wRzA2ZVRzZG9B");
 const USERS   = [{"id": "lucian", "name": "Lucian", "initials": "L", "color": "#2c5282"}, {"id": "simona", "name": "Simona", "initials": "S", "color": "#744210"}, {"id": "justin", "name": "Justin", "initials": "J", "color": "#276749"}];
 const META    = {"HH - Haupthaus": {"icon": "🏡", "color": "#2c5282"}, "ELW - Einliegerwohnung": {"icon": "🏘️", "color": "#375623"}, "Drausen - Aussenbereich": {"icon": "🌳", "color": "#7b3f00"}, "_default": {"icon": "🏠", "color": "#4a5568"}};
-const PW_HASH = "";  // SHA-256; leer = kein Passwort
 
 // ── Supabase ─────────────────────────────────────────────────────────────
-const sb = supabase.createClient(SB_URL, SB_KEY);
+const sb = window._sb;  // gesetzt von auth-guard.js
 
 // ── State ─────────────────────────────────────────────────────────────────
 let tasks   = {};  // section → floor → room → [task_text, ...]
@@ -390,8 +331,8 @@ let details = {};  // task_key → {description, status, priority, due_date}
 let me      = null;
 let flt     = 'all';
 let srch    = '';
-let _detKey = null;   // aktuell geöffnetes Detail
-let _detAss = '';     // zugewiesene Person im Drawer
+let _detKey = null;
+let _detAss = '';
 
 // ── Keys ──────────────────────────────────────────────────────────────────
 const tkey = (s,f,r,t) => [s,f,r,t].join('||');
@@ -399,7 +340,31 @@ const ckey = (s,f,r)   => 'cst:' + [s,f,r].join('||');
 const slug = str => str.replace(/[^a-zA-Z0-9]/g,'_').slice(0,38);
 
 // ── Nutzerwahl ────────────────────────────────────────────────────────────
+// me wird aus dem eingeloggten User gesetzt (window._user von auth-guard.js)
+// Der userModal erlaubt das Umschalten falls nötig (z.B. Lucian hakt für Simona ab)
+function initMe() {
+  const auth = window._user;
+  if (!auth) return;
+  // Mappe auth-Felder (farbe/initialen) auf USERS-Format (color/initials)
+  const found = USERS.find(u => u.id === auth.id);
+  me = found || {
+    id: auth.id,
+    name: auth.name,
+    initials: auth.initialen || auth.name.charAt(0).toUpperCase(),
+    color: auth.farbe || '#3182ce'
+  };
+  // Speichere Auswahl mit eigenem Key (nicht hb_user – das ist die Auth-Session!)
+  localStorage.setItem('hb_active_user', me.id);
+  updateUserBadge();
+}
+
 function initModal() {
+  // Zeige eingeloggten Namen im Modal
+  const auth = window._user;
+  if (auth) {
+    const el = document.getElementById('loggedInName');
+    if (el) el.textContent = auth.name;
+  }
   const c = document.getElementById('userOpts');
   c.innerHTML = '';
   USERS.forEach(u => {
@@ -411,53 +376,24 @@ function initModal() {
     c.appendChild(d);
   });
 }
+
 function pickUser(u) {
   me = u;
-  localStorage.setItem('hb_user', u.id);
-  document.getElementById('hdrAvatar').textContent = u.initials;
-  document.getElementById('hdrAvatar').style.background = u.color;
-  document.getElementById('hdrName').textContent = u.name;
+  // WICHTIG: hb_selected_user verwenden, nicht hb_user (das ist die Auth-Session!)
+  localStorage.setItem('hb_selected_user', u.id);
+  updateUserBadge();
   document.getElementById('userModal').classList.add('hidden');
 }
-function restoreUser() {
-  const u = USERS.find(x => x.id === localStorage.getItem('hb_user'));
-  if (u) pickUser(u); else document.getElementById('userModal').classList.remove('hidden');
-}
-function userById(id) { return USERS.find(u => u.id === id); }
 
-// ── Passwortschutz ────────────────────────────────────────────────────────
-async function sha256(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+function updateUserBadge() {
+  if (!me) return;
+  const avatar = document.getElementById('hdrAvatar');
+  const name   = document.getElementById('hdrName');
+  if (avatar) { avatar.textContent = me.initials; avatar.style.background = me.color; }
+  if (name)   name.textContent = me.name;
 }
-function isAuthed() {
-  if (!PW_HASH) return true;
-  return Date.now() < parseInt(localStorage.getItem('hb_auth_until') || '0');
-}
-async function doLogin() {
-  const val = document.getElementById('pwInput').value;
-  const h   = await sha256(val);
-  if (h === PW_HASH) {
-    localStorage.setItem('hb_auth_until', Date.now() + 30*24*60*60*1000);
-    document.getElementById('pwModal').classList.add('hidden');
-    document.getElementById('pwErr').style.display = 'none';
-    restoreUser();
-    loadAll().then(subscribe);
-  } else {
-    document.getElementById('pwErr').style.display = 'block';
-    document.getElementById('pwInput').value = '';
-    document.getElementById('pwInput').focus();
-  }
-}
-function checkAuth() {
-  if (isAuthed()) {
-    restoreUser();
-    loadAll().then(subscribe);
-  } else {
-    document.getElementById('pwModal').classList.remove('hidden');
-    setTimeout(() => document.getElementById('pwInput').focus(), 120);
-  }
-}
+
+function userById(id) { return USERS.find(u => u.id === id); }
 
 // ── Sync-Flash ────────────────────────────────────────────────────────────
 let syncTimer;
@@ -522,7 +458,7 @@ async function loadAll() {
 
   rebuildUI();
   } catch(e) {
-    showError('Unerwarteter Fehler: ' + e.message + '<br><br>Bitte prüfe: Supabase URL und Anon-Key in config.json, RLS-Policies in Supabase.');
+    showError('Unerwarteter Fehler: ' + e.message);
   }
 }
 
@@ -600,7 +536,6 @@ function showAssignMenu(e, s, f, r, t) {
   const menu = document.createElement('div');
   menu.className = 'assign-menu';
   menu.innerHTML = html;
-  // position:fixed, unter dem Button, rechtsbündig
   const top   = rect.bottom + 4;
   const right = window.innerWidth - rect.right;
   menu.style.top   = top + 'px';
@@ -671,14 +606,13 @@ function trow(s, f, r, t) {
   const stCls  = (det.status||'Offen').replace(/ /g,'');
   const stChip = det.status && det.status!=='Offen'
     ? `<span class="status-chip status-${stCls}">${det.status}</span>` : '';
-  // Due date chip
   let dueChip = '';
   if (det.due_date && !chk) {
     const due   = new Date(det.due_date + 'T00:00:00');
     const today = new Date(); today.setHours(0,0,0,0);
     const diff  = Math.round((due-today)/86400000);
     const dFmt  = due.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
-    if      (diff < 0)  dueChip = `<span class="due-chip overdue" title="Überfällig!">⚠ ${dFmt}</span>`;
+    if      (diff < 0)   dueChip = `<span class="due-chip overdue" title="Überfällig!">⚠ ${dFmt}</span>`;
     else if (diff === 0) dueChip = `<span class="due-chip today">📅 Heute</span>`;
     else if (diff <= 3)  dueChip = `<span class="due-chip soon">📅 ${dFmt}</span>`;
     else                 dueChip = `<span class="due-chip future">📅 ${dFmt}</span>`;
@@ -703,7 +637,7 @@ function roomCard(s, f, r, base) {
   const pct  = st.total ? Math.round(st.done/st.total*100) : 0;
   const coll = localStorage.getItem('cl:'+cid)==='1' ? 'coll' : '';
   const rows = all.map(t => trow(s,f,r,t)).join('');
-  if (flt === 'mine' && !rows.trim()) return '';  // leere Karten bei Mine-Filter ausblenden
+  if (flt === 'mine' && !rows.trim()) return '';
   const esc  = v => JSON.stringify(v).replace(/"/g,'&quot;');
   return `<div class="card ${coll}" id="${cid}">
     <div class="card-hdr" onclick="toggleCard('${cid}')">
@@ -756,37 +690,25 @@ function setFlt(f, btn) {
 // ── UI aufbauen ───────────────────────────────────────────────────────────
 function rebuildUI() {
   if (!Object.keys(tasks).length) return;
-  let html='', sbHtml = '';
+  let html = '';
 
   for (const [s, floors] of Object.entries(tasks)) {
     const m = META[s] || {icon:'🏠', color:'#2c5282'};
     html += `<div class="sec-hdr" id="sec_${slug(s)}">
       <span class="sec-ico">${m.icon}</span>
       <span class="sec-ttl">${s}</span></div>`;
-    sbHtml += `<div class="sb-sec">${m.icon} ${s.split('-')[0].trim()}</div>`;
 
     for (const [f, rooms] of Object.entries(floors)) {
       const fid = slug(s+f);
       html += `<div class="floor-lbl" id="fl_${fid}">${f}</div><div class="grid">`;
-      let ft=0, fd=0;
       for (const [r, ts] of Object.entries(rooms)) {
         html += roomCard(s,f,r,ts);
-        const st = roomStats(s,f,r,ts); ft+=st.total; fd+=st.done;
       }
       html += '</div>';
-      sbHtml += `<a class="sb-link" href="#fl_${fid}">
-        <span>${f}</span><span class="mp">${fd}/${ft}</span></a>`;
     }
   }
   document.getElementById('content').innerHTML = html;
-  document.getElementById('sb').innerHTML = sbHtml;
   globalProgress();
-}
-
-// ── Mobile Sidebar ────────────────────────────────────────────────────────
-function mobToggle() {
-  document.getElementById('mainSidebar').classList.toggle('open');
-  document.getElementById('mobOv').classList.toggle('vis');
 }
 
 // ── Detail-Drawer ─────────────────────────────────────────────────────────
@@ -796,92 +718,85 @@ function fmtDateTime(iso) {
     day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'
   });
 }
+
 function buildAssignOpts(current) {
   const c = document.getElementById('detAssignOpts');
   c.innerHTML = '';
-  // Niemand
-  const none = document.createElement('div');
-  none.className = 'none-opt' + (current==='' ? ' selected' : '');
-  none.innerHTML = '<span style="font-size:.85rem">✕</span><span>Niemand</span>';
-  none.onclick = () => { _detAss=''; c.querySelectorAll('.assign-opt,.none-opt').forEach(x=>x.classList.remove('selected')); none.classList.add('selected'); };
-  c.appendChild(none);
+  // Niemand-Option
+  const noneDiv = document.createElement('div');
+  noneDiv.className = 'none-opt' + (current==='' ? ' selected' : '');
+  noneDiv.innerHTML = `<span style="font-size:.9rem">🚫</span><span>Niemand</span>`;
+  noneDiv.onclick = () => { _detAss = ''; buildAssignOpts(''); };
+  c.appendChild(noneDiv);
+  // Benutzer-Optionen
   USERS.forEach(u => {
-    const d = document.createElement('div');
-    d.className = 'assign-opt' + (current===u.id ? ' selected' : '');
-    d.innerHTML = `<div class="oa" style="background:${u.color}">${u.initials}</div><span>${u.name}</span>`;
-    d.onclick = () => {
-      _detAss = u.id;
-      c.querySelectorAll('.assign-opt,.none-opt').forEach(x=>x.classList.remove('selected'));
-      d.classList.add('selected');
-    };
-    c.appendChild(d);
+    const div = document.createElement('div');
+    div.className = 'assign-opt' + (current===u.id ? ' selected' : '');
+    div.innerHTML = `<div class="oa" style="background:${u.color}">${u.initials}</div><span>${u.name}</span>`;
+    div.onclick = () => { _detAss = u.id; buildAssignOpts(u.id); };
+    c.appendChild(div);
   });
 }
+
 function openDetail(s, f, r, t) {
-  try {
-    _detKey = tkey(s,f,r,t);
-    const det = details[_detKey] || {};
-    const chk = checks[_detKey]  || {};
-    _detAss   = chk.ass || '';
-    document.getElementById('detTitle').textContent      = t;
-    document.getElementById('detBreadcrumb').textContent =
-      s.split('-').slice(-1)[0].trim() + ' › ' + f + ' › ' + r;
-    document.getElementById('detStatus').value   = det.status   || 'Offen';
-    document.getElementById('detPriority').value = det.priority || 'Mittel';
-    document.getElementById('detDue').value      = det.due_date || '';
-    document.getElementById('detDesc').value     = det.description || '';
-    buildAssignOpts(_detAss);
-    const wrap = document.getElementById('detCompletedWrap');
-    if (chk.completedAt) {
-      wrap.style.display = 'block';
-      document.getElementById('detCompleted').textContent = fmtDateTime(chk.completedAt);
-    } else {
-      wrap.style.display = 'none';
-    }
-    document.getElementById('drawerOv').classList.add('open');
-    document.getElementById('detDrawer').classList.add('open');
-    setTimeout(() => document.getElementById('detDesc').focus(), 280);
-  } catch(err) {
-    console.error('openDetail Fehler:', err);
-    alert('Fehler beim Öffnen der Details: ' + err.message);
-  }
+  _detKey = tkey(s,f,r,t);
+  _detAss = checks[_detKey]?.ass || '';
+  const det = details[_detKey] || {};
+  document.getElementById('detTitle').textContent = t;
+  document.getElementById('detBreadcrumb').textContent = [s, f, r].join(' › ');
+  document.getElementById('detStatus').value   = det.status || 'Offen';
+  document.getElementById('detPriority').value = det.priority || 'Mittel';
+  document.getElementById('detDue').value       = det.due_date || '';
+  document.getElementById('detDesc').value      = det.description || '';
+  const cmpd = checks[_detKey]?.completedAt;
+  document.getElementById('detCompletedWrap').style.display = cmpd ? '' : 'none';
+  document.getElementById('detCompleted').textContent = fmtDateTime(cmpd);
+  buildAssignOpts(_detAss);
+  document.getElementById('detDrawer').classList.add('open');
+  document.getElementById('drawerOv').classList.add('open');
 }
+
 function closeDetail() {
-  document.getElementById('drawerOv').classList.remove('open');
   document.getElementById('detDrawer').classList.remove('open');
+  document.getElementById('drawerOv').classList.remove('open');
   _detKey = null;
 }
+
 async function saveDetail() {
   if (!_detKey) return;
   const status   = document.getElementById('detStatus').value;
   const priority = document.getElementById('detPriority').value;
   const due_date = document.getElementById('detDue').value || null;
   const desc     = document.getElementById('detDesc').value.trim();
-  // Update local state
-  details[_detKey] = {description:desc, status, priority, due_date};
-  if (checks[_detKey]) checks[_detKey].ass = _detAss;
-  else checks[_detKey] = {checked:false, by:'', ass:_detAss, completedAt:null};
-  closeDetail();
-  rebuildUI();
-  // Parallel speichern
-  const detProm = sb.from('hausbau_task_details').upsert(
-    {task_key:_detKey, description:desc, status, priority, due_date,
-      updated_at:new Date().toISOString()},
-    {onConflict:'task_key'}
+
+  details[_detKey] = { status, priority, due_date, description: desc };
+
+  // Zuweisung aktualisieren falls geändert
+  if (_detAss !== (checks[_detKey]?.ass || '')) {
+    const cur = checks[_detKey] || {checked:false, by:'', ass:''};
+    checks[_detKey] = {...cur, ass: _detAss};
+    await sb.from('hausbau_checks').upsert(
+      {task_key:_detKey, checked:cur.checked||false, checked_by:cur.by||'',
+        assigned_to:_detAss, updated_at:new Date().toISOString()},
+      {onConflict:'task_key'}
+    );
+  }
+
+  await sb.from('hausbau_task_details').upsert(
+    {task_key: _detKey, status, priority, due_date, description: desc,
+      updated_at: new Date().toISOString()},
+    {onConflict: 'task_key'}
   );
-  const cur = checks[_detKey];
-  const assProm = sb.from('hausbau_checks').upsert(
-    {task_key:_detKey, checked:cur.checked||false, checked_by:cur.by||'',
-      assigned_to:_detAss, completed_at:cur.completedAt||null,
-      updated_at:new Date().toISOString()},
-    {onConflict:'task_key'}
-  );
-  await Promise.all([detProm, assProm]);
+
+  flash(); rebuildUI(); closeDetail();
 }
 
 // ── Start ─────────────────────────────────────────────────────────────────
-initModal();
-checkAuth();
+window.addEventListener('DOMContentLoaded', function() {
+  initMe();      // me aus auth-guard window._user setzen
+  initModal();   // User-Modal aufbauen (für manuellen Wechsel)
+  loadAll().then(subscribe);
+});
 </script>
 </body>
 </html>
