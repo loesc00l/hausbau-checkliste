@@ -715,20 +715,6 @@
           statusText = "Gekauft";
         }
 
-        // Ist-Preis Spalte
-        const ist = istGesamt(item);
-        const spar = ersparnis(item);
-        let istCell = '<span style="color:#a0aec0;font-size:.78rem">–</span>';
-        if (ist !== null) {
-          let sparStr = '';
-          if (spar !== null && Math.abs(spar) > 0.001) {
-            sparStr = spar > 0
-              ? `<br><span style="color:#276749;font-size:.72rem">▼ ${formatCurrency(spar)} gespart</span>`
-              : `<br><span style="color:#c53030;font-size:.72rem">▲ ${formatCurrency(Math.abs(spar))} mehr</span>`;
-          }
-          istCell = `<strong style="color:${spar >= 0 ? '#276749' : '#c53030'}">${formatCurrency(ist)}</strong>${sparStr}`;
-        }
-
         const row = document.createElement("tr");
         row.innerHTML = `
           <td><strong>${item.artikel}</strong></td>
@@ -736,7 +722,6 @@
           <td>${formatCurrency(item.preis || 0)}</td>
           <td>${item.locations.length}</td>
           <td>${formatCurrency(gesamt)}</td>
-          <td>${istCell}</td>
           <td><span class="status-badge ${statusClass}">${statusText}</span></td>
         `;
         tbody.appendChild(row);
