@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mein Profil – Hausbau</title>
+<style>html{visibility:hidden}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth-guard.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f172a;--card:#1e293b;--border:#334155;--txt:#e2e8f0;--muted:#94a3b8;--accent:#3b82f6;--green:#22c55e;--red:#ef4444}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#2d3748;min-height:100vh}
+
+/* ── Sticky Top-Nav ───────────────────────────────────────────────── */
+.sticky-header{position:sticky;top:0;z-index:300}
+header{background:#2c5282;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;
+  box-shadow:0 2px 8px rgba(0,0,0,.18)}
+header h1{font-size:1.15rem;font-weight:700}
+.top-nav{background:#1a2f4e;display:flex;align-items:center;gap:2px;
+  padding:0 16px;overflow-x:auto;white-space:nowrap}
+.top-nav::-webkit-scrollbar{display:none}
+.top-nav>a{display:inline-flex;align-items:center;gap:5px;padding:9px 13px;
+  color:rgba(255,255,255,.65);text-decoration:none;font-size:.78rem;border-bottom:2px solid transparent;
+  transition:all .15s;white-space:nowrap}
+.top-nav>a:hover{color:#fff;background:rgba(255,255,255,.07)}
+.top-nav>a.active{color:#fff;border-bottom-color:#68d391;font-weight:600}
+.nav-sep{flex:1}
+.nav-user{font-size:.72rem;color:rgba(255,255,255,.6);padding:0 8px}
+.nav-logout{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  color:rgba(255,255,255,.8);padding:5px 12px;border-radius:6px;font-size:.75rem;
+  cursor:pointer;transition:all .15s;white-space:nowrap}
+.nav-logout:hover{background:rgba(255,255,255,.2);color:#fff}
+
+/* ── Seiten-Inhalt ────────────────────────────────────────────────── */
+main{max-width:600px;margin:36px auto;padding:0 20px 60px}
+
+.avatar-ring{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:1.8rem;font-weight:800;color:#fff;
+  margin:0 auto 12px;flex-shrink:0}
+.profile-head{text-align:center;margin-bottom:32px}
+.profile-head h2{font-size:1.3rem;font-weight:700;color:#1a365d;margin-bottom:4px}
+.profile-head p{font-size:.82rem;color:#718096}
+
+.section{background:#fff;border-radius:12px;border:1px solid #e2e8f0;
+  padding:24px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.section h3{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
+  color:#718096;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid #f0f4f8}
+
+.field{margin-bottom:16px}
+.field label{display:block;font-size:.78rem;font-weight:600;color:#4a5568;margin-bottom:6px}
+.field input{width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:8px;
+  font-size:.88rem;color:#2d3748;outline:none;transition:border-color .15s;font-family:inherit}
+.field input:focus{border-color:#3182ce}
+.field input:disabled{background:#f7fafc;color:#a0aec0;cursor:not-allowed}
+.field .hint{font-size:.72rem;color:#a0aec0;margin-top:5px}
+
+.btn{padding:10px 22px;border:none;border-radius:8px;font-size:.88rem;font-weight:700;
+  cursor:pointer;transition:all .15s;font-family:inherit}
+.btn-primary{background:#2c5282;color:#fff}
+.btn-primary:hover{background:#2a4a7f}
+.btn-primary:disabled{opacity:.55;cursor:not-allowed}
+.btn-danger{background:rgba(239,68,68,.1);color:#e53e3e;border:1px solid rgba(239,68,68,.2)}
+.btn-danger:hover{background:rgba(239,68,68,.2)}
+
+.alert{border-radius:8px;padding:10px 14px;font-size:.82rem;margin-bottom:14px;display:none}
+.alert.show{display:block}
+.alert-ok{background:rgba(72,187,120,.1);border:1px solid rgba(72,187,120,.3);color:#276749}
+.alert-err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#c53030}
+
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);
+  border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;
+  vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.pw-strength{height:4px;border-radius:2px;margin-top:6px;transition:all .3s;background:#e2e8f0}
+.pw-strength.weak{background:#fc8181;width:33%}
+.pw-strength.ok{background:#f6ad55;width:66%}
+.pw-strength.strong{background:#68d391;width:100%}
+</style>
+</head>
+<body>
+
+<div class="sticky-header">
+<header>
+  <h1>👤 Mein Profil</h1>
+</header>
+<nav class="top-nav">
+  <a href="index.html">🏠 Checklisten</a>
+  <a href="einkaufsliste.html">🛒 Einkauf</a>
+  <a href="finanzen.html">💶 Finanzen</a>
+  <a href="hausinfo.html">🏡 Haus-Info</a>
+  <a href="dashboard.html">📊 Dashboard</a>
+  <span class="nav-sep"></span>
+  <span class="nav-user" id="navUser"></span>
+  <button class="nav-logout" onclick="hausbauLogout()">⎋ Abmelden</button>
+</nav>
+</div>
+
+<main>
+
+  <!-- Avatar + Name -->
+  <div class="profile-head">
+    <div class="avatar-ring" id="avatarRing">?</div>
+    <h2 id="profileName">Wird geladen…</h2>
+    <p id="profileEmail" style="color:#a0aec0;font-size:.78rem"></p>
+  </div>
+
+  <!-- ── E-Mail für Passwort-Reset ─────────────────────────────── -->
+  <div class="section">
+    <h3>📧 E-Mail für Passwort-Reset</h3>
+    <p style="font-size:.8rem;color:#718096;margin-bottom:16px;line-height:1.55">
+      Hinterlege deine echte E-Mail-Adresse. Sie wird genutzt um dir einen
+      Reset-Link zu schicken, falls du dein Passwort vergisst.
+    </p>
+    <div class="alert alert-ok" id="emailOk">✅ E-Mail gespeichert!</div>
+    <div class="alert alert-err" id="emailErr"></div>
+    <div class="field">
+      <label>Deine E-Mail-Adresse</label>
+      <input type="email" id="recoveryEmail" placeholder="deine@email.de"
+        autocomplete="email">
+      <div class="hint">Wird nur für den Passwort-Reset verwendet, nicht als Login.</div>
+    </div>
+    <button class="btn btn-primary" id="saveEmailBtn" onclick="saveEmail()">
+      Speichern
+    </button>
+  </div>
+
+  <!-- ── Passwort ändern ────────────────────────────────────────── -->
+  <div class="section">
+    <h3>🔑 Passwort ändern</h3>
+    <div class="alert alert-ok" id="pwOk">✅ Passwort erfolgreich geändert!</div>
+    <div class="alert alert-err" id="pwErr"></div>
+    <div class="field">
+      <label>Neues Passwort</label>
+      <input type="password" id="newPw" placeholder="Mindestens 8 Zeichen"
+        autocomplete="new-password" oninput="checkStrength(this.value)">
+      <div class="pw-strength" id="pwStrength"></div>
+    </div>
+    <div class="field">
+      <label>Neues Passwort bestätigen</label>
+      <input type="password" id="newPw2" placeholder="Passwort wiederholen"
+        autocomplete="new-password"
+        onkeydown="if(event.key==='Enter')changePassword()">
+    </div>
+    <button class="btn btn-primary" id="changePwBtn" onclick="changePassword()">
+      Passwort ändern
+    </button>
+  </div>
+
+  <!-- ── Abmelden ───────────────────────────────────────────────── -->
+  <div class="section">
+    <h3>🚪 Sitzung</h3>
+    <p style="font-size:.8rem;color:#718096;margin-bottom:16px">
+      Meldet dich auf diesem Gerät ab. Du kannst dich jederzeit wieder anmelden.
+    </p>
+    <button class="btn btn-danger" onclick="hausbauLogout()">Abmelden</button>
+  </div>
+
+</main>
+
+<script>
+const COLORS = {
+  lucian: '#2c5282',
+  simona: '#744210',
+  justin: '#276749',
+};
+
+// ── Profil laden ─────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async function() {
+  // Warte bis auth-guard fertig ist
+  const waitForUser = () => new Promise(resolve => {
+    if (window._user) return resolve(window._user);
+    const iv = setInterval(() => {
+      if (window._user) { clearInterval(iv); resolve(window._user); }
+    }, 50);
+    setTimeout(() => { clearInterval(iv); resolve(null); }, 3000);
+  });
+
+  const user = await waitForUser();
+  if (!user) return;
+
+  const raw  = (user.email || '').split('@')[0].toLowerCase();
+  const name = raw.charAt(0).toUpperCase() + raw.slice(1);
+  const color = COLORS[raw] || '#4a5568';
+  const initials = name.charAt(0).toUpperCase();
+
+  document.getElementById('avatarRing').textContent = initials;
+  document.getElementById('avatarRing').style.background = color;
+  document.getElementById('profileName').textContent = name;
+  document.getElementById('profileEmail').textContent = user.email;
+
+  // Gespeicherte Recovery-E-Mail laden
+  const meta = user.user_metadata || {};
+  if (meta.recovery_email) {
+    document.getElementById('recoveryEmail').value = meta.recovery_email;
+  }
+});
+
+// ── E-Mail speichern ──────────────────────────────────────────────────────────
+async function saveEmail() {
+  const btn   = document.getElementById('saveEmailBtn');
+  const email = document.getElementById('recoveryEmail').value.trim();
+  const ok    = document.getElementById('emailOk');
+  const err   = document.getElementById('emailErr');
+  ok.classList.remove('show');
+  err.classList.remove('show');
+
+  if (!email || !email.includes('@')) {
+    err.textContent = 'Bitte eine gültige E-Mail-Adresse eingeben.';
+    err.classList.add('show');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Speichern…';
+
+  try {
+    const { error } = await window._sb.auth.updateUser({
+      data: { recovery_email: email }
+    });
+    if (error) throw error;
+    ok.classList.add('show');
+    // Lokalen User aktualisieren
+    if (window._user) window._user.user_metadata = { ...window._user.user_metadata, recovery_email: email };
+  } catch(e) {
+    err.textContent = 'Fehler: ' + (e.message || 'Unbekannter Fehler');
+    err.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Speichern';
+  }
+}
+
+// ── Passwortstärke ────────────────────────────────────────────────────────────
+function checkStrength(pw) {
+  const bar = document.getElementById('pwStrength');
+  if (!pw) { bar.className = 'pw-strength'; return; }
+  const strong = pw.length >= 10 && /[A-Z]/.test(pw) && /[0-9]/.test(pw);
+  const ok     = pw.length >= 8;
+  bar.className = 'pw-strength ' + (strong ? 'strong' : ok ? 'ok' : 'weak');
+}
+
+// ── Passwort ändern ───────────────────────────────────────────────────────────
+async function changePassword() {
+  const btn  = document.getElementById('changePwBtn');
+  const pw1  = document.getElementById('newPw').value;
+  const pw2  = document.getElementById('newPw2').value;
+  const ok   = document.getElementById('pwOk');
+  const err  = document.getElementById('pwErr');
+  ok.classList.remove('show');
+  err.classList.remove('show');
+
+  if (!pw1 || pw1.length < 8) {
+    err.textContent = 'Das Passwort muss mindestens 8 Zeichen lang sein.';
+    err.classList.add('show');
+    document.getElementById('newPw').focus();
+    return;
+  }
+  if (pw1 !== pw2) {
+    err.textContent = 'Die Passwörter stimmen nicht überein.';
+    err.classList.add('show');
+    document.getElementById('newPw2').focus();
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Speichern…';
+
+  try {
+    const { error } = await window._sb.auth.updateUser({ password: pw1 });
+    if (error) throw error;
+    ok.classList.add('show');
+    document.getElementById('newPw').value  = '';
+    document.getElementById('newPw2').value = '';
+    document.getElementById('pwStrength').className = 'pw-strength';
+  } catch(e) {
+    err.textContent = 'Fehler: ' + (e.message || 'Unbekannter Fehler');
+    err.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Passwort ändern';
+  }
+}
+</script>
+</body>
+</html>
