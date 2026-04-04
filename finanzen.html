@@ -399,6 +399,18 @@
     }
 
     .sticky-header { position:sticky; top:0; z-index:300; }
+  
+    /* Sub-Nav Gewerk-Filter */
+    .sub-nav{background:#f7fafc;border-bottom:1px solid #e2e8f0;padding:8px 24px;
+      display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:44px}
+    .sub-nav-pill{display:inline-flex;align-items:center;gap:4px;padding:5px 13px;
+      border-radius:20px;border:1.5px solid #e2e8f0;background:#fff;color:#4a5568;
+      font-size:.75rem;font-weight:600;cursor:pointer;white-space:nowrap;
+      transition:all .15s;user-select:none}
+    .sub-nav-pill:hover{border-color:#3182ce;color:#2c5282;background:#ebf8ff}
+    .sub-nav-pill.active{background:#2c5282;color:#fff;border-color:#2c5282}
+    .sub-nav-pill .pill-cost{font-size:.65rem;opacity:.8;margin-left:2px}
+    .sub-nav-pill.active .pill-cost{opacity:.7}
   </style>
 </head>
 <body>
@@ -425,6 +437,7 @@
     <button class="nav-logout" onclick="hausbauLogout()">⎋ Abmelden</button>
   </nav>
   </div>
+<div class="sub-nav" id="subNav"></div>
 
   <main>
     <div id="loadingIndicator" class="loading" style="display:none">Laden...</div>
@@ -510,13 +523,14 @@
     const SB_KEY = atob("ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW10cGJXOW5jM2RqYjI1MWVHbHFjM3B4Y0hGNklpd2ljbTlzWlNJNkluTmxjblpwWTJWZmNtOXNaU0lzSW1saGRDSTZNVGMzTkRFNU56WXlOU3dpWlhod0lqb3lNRGc1Tnpjek5qSTFmUS56bXFtX2pSRzBYbkR3LVJhNE9mZkpYbENyVlBuSXlOWC0wRzA2ZVRzZG9B");
 
     const PASSWORD = "hausbau2024";
-    let supabase = null;
+    let _sbClient = null;
+    let currentGewerk = null;
     let currentFilter = "all";
     let data = [];
     let checks = {};
 
     function initSupabase() {
-      supabase = window.supabase.createClient(SB_URL, SB_KEY);
+      _sbClient = window._sb || window._sbClient.createClient(SB_URL, SB_KEY);
     }
 
     function checkAuth() {
@@ -591,8 +605,35 @@
       ];
     }
 
+
+    function buildSubNav() {
+      const gewerkCosts = {};
+      data.forEach(item => {
+        gewerkCosts[item.gewerk] = (gewerkCosts[item.gewerk] || 0) + effGesamt(item);
+      });
+      const gewerke = Object.entries(gewerkCosts).sort((a,b) => b[1]-a[1]);
+      const total = gewerke.reduce((s,[,v])=>s+v, 0);
+      const nav = document.getElementById('subNav');
+      if (!nav) return;
+      let html = '<span class="sub-nav-pill' + (currentGewerk===null?' active':'') + '" onclick="setGewerk(null)">Alle <span class="pill-cost">(' + formatCurrency(total) + ')</span></span>';
+      gewerke.forEach(([gw, cost]) => {
+        const active = currentGewerk === gw ? ' active' : '';
+        const gwSafe = gw.replace(/'/g,"\'");
+        html += '<span class="sub-nav-pill' + active + '" onclick="setGewerk(\'' + gwSafe + '\')">' + gw + ' <span class="pill-cost">' + formatCurrency(cost) + '</span></span>';
+      });
+      nav.innerHTML = html;
+    }
+
+    function setGewerk(gw) {
+      currentGewerk = gw;
+      buildSubNav();
+      renderTable();
+      renderGewerkBreakdown();
+    }
+
     function renderDashboard() {
       renderKPIs();
+      buildSubNav();
       renderGewerkBreakdown();
       renderProgress();
       renderTable();
@@ -694,6 +735,7 @@
       tbody.innerHTML = "";
 
       const filtered = data.filter(item => {
+        if (currentGewerk && item.gewerk !== currentGewerk) return false;
         if (currentFilter === "all") return true;
         if (currentFilter === "gekauft") return checks[`k:${item.artikel}`];
         if (currentFilter === "verbaut") return item.locations && item.locations.every(loc => checks[`v:${item.artikel}||${loc.ort}`]?.verbaut);
