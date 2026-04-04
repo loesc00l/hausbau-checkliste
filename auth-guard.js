@@ -48,7 +48,7 @@
   }
 
   // Seite einblenden (auch wenn Supabase-Init fehlschlug)
-  document.documentElement.style.visibility = "";
+  document.documentElement.style.visibility = "visible";
 })();
 
 /** Globale Logout-Funktion – in allen geschuetzten Seiten verfuegbar */
