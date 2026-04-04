@@ -18,7 +18,7 @@
   try { session = JSON.parse(localStorage.getItem(SESSION_KEY)); } catch (_) {}
 
   if (!session || !session.id) {
-    // Nicht eingeloggt -> zur Login-Seite umleiten
+    // Nicht eingeloggt -> zur Login-Seite umleiten (Seite bleibt hidden waehrend Navigation)
     var next = encodeURIComponent(location.href);
     location.replace("login.html?next=" + next);
     return;
@@ -27,8 +27,14 @@
   // Session gueltig – globale Variablen setzen
   window._user        = session;          // {id, name, farbe, initialen}
   window._displayName = session.name;
-  // Supabase-Client nur fuer Daten (Tabellen lesen/schreiben, kein Auth)
-  window._sb = window.supabase.createClient(SB_URL, SB_KEY);
+
+  // Supabase-Client erstellen (in try-catch: falls CDN nicht geladen, Seite trotzdem anzeigen)
+  try {
+    window._sb = window.supabase.createClient(SB_URL, SB_KEY);
+  } catch (err) {
+    console.error("[auth-guard] Supabase-Initialisierung fehlgeschlagen:", err);
+    // Kein return – Seite wird trotzdem eingeblendet, Fehler erscheint spaeter beim DB-Zugriff
+  }
 
   // Nav-Badge setzen
   function applyNavUser() {
@@ -41,7 +47,7 @@
     applyNavUser();
   }
 
-  // Seite einblenden
+  // Seite einblenden (auch wenn Supabase-Init fehlschlug)
   document.documentElement.style.visibility = "";
 })();
 
