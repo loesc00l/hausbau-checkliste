@@ -335,7 +335,7 @@ const GEWERK_ICONS = {
 };
 
 // ── Supabase ─────────────────────────────────────────────────────────────
-const sb = supabase.createClient(SB_URL, SB_KEY);
+const sb = window._sb || supabase.createClient(SB_URL, SB_KEY);
 
 // ── State ─────────────────────────────────────────────────────────────────
 let checks   = {};   // item_key -> {gekauft, verbaut, checked_by}
@@ -363,14 +363,14 @@ function initModal() {
 }
 function pickUser(u) {
   me = u;
-  localStorage.setItem('hb_user', u.id);
+  localStorage.setItem('hb_selected_user', u.id);
   document.getElementById('hdrAvatar').textContent = u.initials;
   document.getElementById('hdrAvatar').style.background = u.color;
   document.getElementById('hdrName').textContent = u.name;
   document.getElementById('userModal').classList.add('hidden');
 }
 function restoreUser() {
-  const u = USERS.find(x => x.id === localStorage.getItem('hb_user'));
+  const u = USERS.find(x => x.id === localStorage.getItem('hb_selected_user'));
   if (u) pickUser(u);
   else document.getElementById('userModal').classList.remove('hidden');
 }
@@ -663,479 +663,81 @@ function buildArtikelCard(item) {
       locs += `<div class="cb-row${isV?' done':''}">
         <button class="verb-btn${isV?' on':''}" onclick="toggleVerbaut('${esc(item.artikel)}','${esc(l.ort)}')" title="Verbaut markieren">${isV?'✓ Verbaut':'🔧 Verbauen'}</button>
         <div class="cb-lbl">
-          <div>${l.ort.replace('_',' ').replace(':',' › ')}</div>
-          <div class="cb-sub">${l.posten}${l.beschreibung?' · '+l.beschreibung:''} · ${l.menge % 1 === 0 ? l.menge : l.menge.toFixed(1)} ${l.typ}</div>
+          <div>${l.ort}</div>
+          <div class="cb-sub">${l.menge||''}${l.typ?' '+l.typ:''}${l.preis_einzel>0?' – '+l.preis_einzel.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €':''}</div>
         </div>
-        <span class="menge-badge">${l.menge % 1 === 0 ? l.menge : l.menge.toFixed(1)} ${l.typ}</span>
         ${whoIcon}
       </div>`;
     });
   }
 
   return `<div class="artikel-card" id="ac_${slug(item.artikel)}">
-    <div class="artikel-hdr" onclick="toggleCard('${slug(item.artikel)}')">
-      <button class="kauf-btn${isGekauft?' on':''}" 
-        onclick="event.stopPropagation();toggleGekauft('${esc(item.artikel)}')"
-        title="Als gekauft markieren">
-        ${isGekauft?'✓ Gekauft':'🛒 Kaufen'}
-      </button>
+    <div class="artikel-hdr" onclick="document.getElementById('acb_${slug(item.artikel)}').classList.toggle('hidden')">
       <span class="artikel-name">${item.artikel}</span>
       <div class="artikel-meta">
         ${statusTag}
-        ${preisStr ? '<span class="preis-badge">'+preisStr+'</span>' : ''}
-        ${gesamtStr ? '<span class="preis-badge" style="color:#2c5282;font-weight:700">∑ '+gesamtStr+'</span>' : ''}
         ${istBadge}
-        ${effMenge(item) > 0 ? '<span class="menge-badge">'+effMenge(item)+' '+item.art+'</span>' : ''}
+        ${preisStr?`<span class="preis-badge">${preisStr}</span>`:''}
+        ${gesamtStr?`<span class="preis-badge" style="font-weight:700;color:#2c5282">${gesamtStr}</span>`:''}
         ${linkBtn}
-                <button class="edit-btn" data-art="${esc(item.artikel)}" onclick="event.stopPropagation();editArtikel(this.dataset.art)" title="Bearbeiten">✏️</button>
-        ${item._custom ? `<button class="del-btn" data-art="${esc(item.artikel)}" onclick="event.stopPropagation();deleteArtikel(this.dataset.art)" title="Löschen">🗑</button>` : ''}
-        <span class="arr">▼</span>
+        <span class="arr">▾</span>
       </div>
     </div>
-    <div class="artikel-body" id="body_${slug(item.artikel)}">
-      ${item.beschreibung ? '<div class="artikel-desc">'+item.beschreibung+'</div>' : ''}
-      <div class="loc-section">${locs}</div>
-      <div style="padding:6px 14px 10px;border-top:1px solid #f0f4f8">
-        <button class="todo-add-btn" id="tbtn_${slug(item.artikel)}"
-          onclick="addTodo('${esc(item.artikel)}','${esc(item.gewerk)}',this)">
-          + Als Todo zur Hauptseite
-        </button>
+    <div class="artikel-body" id="acb_${slug(item.artikel)}">
+      ${item.beschreibung?`<div class="artikel-desc">${item.beschreibung}</div>`:''}
+      <div style="padding:6px 14px 2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button class="kauf-btn${isGekauft?' on':''}" onclick="toggleGekauft('${esc(item.artikel)}')">${isGekauft?'✓ Gekauft':'🛒 Als gekauft markieren'}</button>
+        <button class="todo-add-btn" onclick="addTodo('${esc(item.artikel)}','${esc(item.gewerk)}',this)">+ Checkliste</button>
       </div>
+      ${locs?`<div class="loc-section">${locs}</div>`:''}
     </div>
   </div>`;
 }
 
-function toggleCard(id) {
-  const card = document.getElementById('ac_' + id);
-  const body = document.getElementById('body_' + id);
-  if (!card || !body) return;
-  card.classList.toggle('coll');
-  body.style.display = card.classList.contains('coll') ? 'none' : '';
-}
+// ── Sidebar (kein Sidebar, Top-Nav wird verwendet) ────────────────────────
+function buildSidebar() {}
 
-// ── Sidebar Gewerke ────────────────────────────────────────────────────────
-function buildSidebar() {
-  const gewerke = [...new Set(EINKAUF_DATA.map(i => i.gewerk))].sort();
-  let html = '';
-  gewerke.forEach(gw => {
-    const icon = GEWERK_ICONS[gw] || '📦';
-    const cnt  = EINKAUF_DATA.filter(i => i.gewerk === gw).length;
-    html += `<a class="sb-link${activeGw===gw?' active':''}"
-      onclick="filterGewerk(event,'${gw.replace(/'/g,"\'")}')"
-      href="#gw_${slug(gw)}">
-      ${icon} ${gw} <span style="margin-left:auto;font-size:.65rem;color:#a0aec0">${cnt}</span>
-    </a>`;
-  });
-  html += `<a class="sb-link${!activeGw?' active':''}"
-    onclick="filterGewerk(event,null)" href="#" style="margin-top:4px">
-    📋 Alle Gewerke
-  </a>`;
-  document.getElementById('sbGewerke').innerHTML = html;
-}
-
-function filterGewerk(e, gw) {
-  e.preventDefault();
-  activeGw = gw;
-  rebuildUI();
-  if (gw) {
-    const el = document.getElementById('gw_' + slug(gw));
-    if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
-  }
-}
-
-// ── Vorgeschlagene Todos ────────────────────────────────────────────────────
+// ── Todo-Bereich ───────────────────────────────────────────────────────────
 function buildTodosSection() {
-  const offene = EINKAUF_DATA.filter(i => !checks[kaufKey(i.artikel)]?.gekauft);
-  if (offene.length === 0) {
-    document.getElementById('todosSection').innerHTML = '';
-    return;
-  }
-  let rows = offene.map(i => `
-    <div class="todo-item">
-      <span style="font-size:1rem">🛒</span>
-      <div class="todo-txt">
-        <strong>${i.artikel}</strong> – ${i.gewerk}
-        ${i.gesamt ? '<span style="color:#718096;font-size:.75rem"> · ∑ '+i.gesamt.toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:0})+' €</span>' : ''}
-      </div>
-      <button class="todo-add-btn" onclick="addTodo('${i.artikel.replace(/'/g,"\'")}',${JSON.stringify(i.gewerk)},this)">
-        + Hauptseite
-      </button>
-    </div>`).join('');
-  document.getElementById('todosSection').innerHTML = `
-    <div class="todo-section">
-      <div class="todo-hdr">
-        <span style="font-size:1.2rem">📋</span>
-        <h3>Noch zu kaufen – vorgeschlagene Todos (${offene.length})</h3>
-      </div>
-      ${rows}
+  const items = EINKAUF_DATA.filter(i => !checks[kaufKey(i.artikel)]?.gekauft);
+  if (!items.length) { document.getElementById('todosSection').innerHTML = ''; return; }
+  const escT = s => s.replace(/'/g,"\'").replace(/"/g,'&quot;');
+  let html = `<div class="todo-section">
+    <div class="todo-hdr"><span>🛒</span><h3>Noch zu kaufen (${items.length} Artikel)</h3></div>`;
+  items.slice(0,15).forEach(item => {
+    html += `<div class="todo-item">
+      <div class="todo-txt">${item.artikel} <span style="color:#a0aec0;font-size:.7rem">(${item.gewerk})</span></div>
+      <button class="todo-add-btn" onclick="addTodo('${escT(item.artikel)}','${escT(item.gewerk)}',this)">+ Checkliste</button>
     </div>`;
-}
-
-// ── Mobile Sidebar ─────────────────────────────────────────────────────────
-function mobToggle() {
-  document.getElementById('sb').classList.toggle('open');
-  document.getElementById('mobOv').classList.toggle('vis');
-}
-
-// ── Custom Artikel (aus Supabase) ────────────────────────────────────────────
-async function loadCustomArtikel() {
-  const {data, error} = await sb.from('hausbau_einkauf_artikel').select('*').order('created_at');
-  if (error) { console.warn('Custom-Artikel Ladefehler:', error.message); return; }
-  const toRemove = EINKAUF_DATA.filter(i => i._custom);
-  toRemove.forEach(i => {
-    const idx = EINKAUF_DATA.indexOf(i);
-    if (idx >= 0) EINKAUF_DATA.splice(idx, 1);
   });
-  // Custom-Artikel können Excel-Einträge überschreiben (Edit-Funktion)
-  (data || []).forEach(r => {
-    const existIdx = EINKAUF_DATA.findIndex(i => i.artikel.toLowerCase() === r.artikel.toLowerCase());
-    if (existIdx >= 0) EINKAUF_DATA.splice(existIdx, 1);
-    let orte = [];
-    try { orte = JSON.parse(r.orte || '[]'); } catch(e) {}
-    const typ = r.art || 'Stk';
-    const preisEinzel = r.preis || 0;
-    // Backward-compat: orte kann String-Array (alt) oder {ort,menge}-Array (neu) sein
-    const rawList = orte.length ? orte : [{ort: 'Manuell', menge: 1}];
-    const locList = rawList.map(o => typeof o === 'string' ? {ort: o, menge: 1} : o);
-    const locations = locList.map(({ort, menge: locMenge}) => ({
-      ort,
-      menge:        locMenge || 1,
-      typ,
-      preis_einzel: preisEinzel,
-      gesamt:       (locMenge || 1) * preisEinzel,
-      gewerk:       r.gewerk || '',
-      kategorie:    '',
-      posten:       r.artikel,
-      prio:         '',
-      beschreibung: r.beschreibung || ''
-    }));
-    const mengeGesamt = locList.reduce((s, l) => s + (l.menge || 1), 0);
-    EINKAUF_DATA.push({
-      artikel:      r.artikel,
-      gewerk:       r.gewerk || 'Sonstiges',
-      beschreibung: r.beschreibung || '',
-      url:          r.url || '',
-      preis:        preisEinzel,
-      art:          typ,
-      menge_gesamt: mengeGesamt,
-      gesamt:       preisEinzel * mengeGesamt,
-      locations,
-      _custom:      true
-    });
-  });
-  rebuildUI();
+  if (items.length > 15) html += `<div style="padding:8px 16px;font-size:.75rem;color:#a0aec0">… und ${items.length-15} weitere Artikel</div>`;
+  html += '</div>';
+  document.getElementById('todosSection').innerHTML = html;
 }
 
-function subscribeCustomArtikel() {
-  sb.channel('custom_artikel_ch')
-    .on('postgres_changes', {event:'*', schema:'public', table:'hausbau_einkauf_artikel'}, () => {
-      loadCustomArtikel();
-    })
-    .subscribe();
-}
-
-// ── Modal: Neuer Artikel ──────────────────────────────────────────────────────
-
-// ── Artikel bearbeiten / löschen ─────────────────────────────────────────────
-function editArtikel(artikelName) {
-  const item = EINKAUF_DATA.find(i => i.artikel === artikelName);
-  if (!item) return;
-
-  // Modal-Titel anpassen
-  document.querySelector('#artikelModal h2').textContent = '✏️ Artikel bearbeiten';
-
-  // Felder befüllen
-  document.getElementById('artArtikel').value       = item.artikel;
-  document.getElementById('artBeschreibung').value  = item.beschreibung || '';
-  document.getElementById('artUrl').value           = item.url || '';
-  document.getElementById('artPreis').value         = item.preis || 0;
-
-  // Gewerk
-  const gwSel = document.getElementById('artGewerk');
-  const gwOpt = Array.from(gwSel.options).find(o => o.value === item.gewerk || o.text === item.gewerk);
-  if (gwOpt) gwSel.value = gwOpt.value; else gwSel.value = gwSel.options[0].value;
-
-  // Art/Einheit
-  const artSel = document.getElementById('artArt');
-  const artOpt = Array.from(artSel.options).find(o => o.value === item.art || o.text === item.art);
-  if (artOpt) artSel.value = artOpt.value; else artSel.value = artSel.options[0].value;
-
-  // Einbauorte-Checkboxen: alle zurücksetzen, dann passende setzen
-  const orteMap = {};
-  item.locations.forEach(l => { orteMap[l.ort] = l.menge || 1; });
-  document.getElementById('orteGrid').querySelectorAll('input[type=checkbox]').forEach(cb => {
-    const checked = cb.value in orteMap;
-    cb.checked = checked;
-    const mengeInp = cb.closest('label').querySelector('.orte-menge');
-    if (mengeInp) mengeInp.value = checked ? (orteMap[cb.value] || 1) : 1;
-  });
-
-  openArtikelModal(false); // false = nicht leeren
-}
-
-async function deleteArtikel(artikelName) {
-  if (!confirm('Artikel "' + artikelName + '" wirklich löschen?')) return;
-  const {error} = await sb.from('hausbau_einkauf_artikel').delete().eq('artikel', artikelName);
-  if (error) { alert('Fehler: ' + error.message); return; }
-  await loadCustomArtikel();
-}
-
-function openArtikelModal(isNew) {
-  if (isNew !== false) {
-    document.querySelector('#artikelModal h2').textContent = '+ Neuen Artikel anlegen';
-    clearArtikelForm();
+// ── Start ─────────────────────────────────────────────────────────────────
+function checkAuth() {
+  // Auth erledigt auth-guard.js – me aus window._user initialisieren
+  if (window._user) {
+    const auth = window._user;
+    const found = USERS.find(u => u.id === auth.id);
+    me = found || {id:auth.id, name:auth.name,
+      initials: auth.initialen || auth.name.charAt(0).toUpperCase(),
+      color: auth.farbe || '#3182ce'};
+    const av = document.getElementById('hdrAvatar');
+    const nm = document.getElementById('hdrName');
+    if (av) { av.textContent = me.initials; av.style.background = me.color; }
+    if (nm) nm.textContent = me.name;
+  } else {
+    restoreUser();
   }
-  document.getElementById('artikelModal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('artArtikel').focus(), 50);
-}
-function closeArtikelModal() {
-  document.getElementById('artikelModal').classList.add('hidden');
-  clearArtikelForm();
-}
-function clearArtikelForm() {
-  ['artArtikel','artBeschreibung','artUrl'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
-  document.getElementById('artPreis').value = '0';
-  document.getElementById('artGewerk').value = 'Elektro';
-  document.getElementById('artArt').value = 'Stueck';
-  document.getElementById('orteGrid').querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
-  document.getElementById('orteGrid').querySelectorAll('.orte-menge').forEach(inp => inp.value = 1);
+  loadAll().then(subscribe);
 }
 
-async function saveNewArtikel() {
-  const artikel = document.getElementById('artArtikel').value.trim();
-  if (!artikel) { alert('Bitte Artikelname eingeben.'); return; }
-  const gewerk       = document.getElementById('artGewerk').value;
-  const beschreibung = document.getElementById('artBeschreibung').value.trim();
-  const url          = document.getElementById('artUrl').value.trim();
-  const preis        = parseFloat(document.getElementById('artPreis').value) || 0;
-  const art          = document.getElementById('artArt').value;
-  const orte = Array.from(
-    document.getElementById('orteGrid').querySelectorAll('input[type=checkbox]:checked')
-  ).map(cb => ({
-    ort:   cb.value,
-    menge: parseFloat(cb.closest('label').querySelector('.orte-menge')?.value) || 1
-  }));
-  const added_by = me || 'unbekannt';
-
-  const btn = document.getElementById('artSaveBtn');
-  btn.disabled = true;
-  btn.textContent = 'Speichern...';
-
-  const {error} = await sb.from('hausbau_einkauf_artikel').upsert(
-    {artikel, gewerk, beschreibung, url, preis, art,
-     orte: JSON.stringify(orte), added_by},
-    {onConflict: 'artikel'}
-  );
-
-  btn.disabled = false;
-  btn.textContent = 'Speichern';
-
-  if (error) { alert('Fehler: ' + error.message); return; }
-  closeArtikelModal();
-  await loadCustomArtikel();
-}
-
-// ── Init ──────────────────────────────────────────────────────────────────────
-initModal();
-restoreUser();
-loadAll().then(() => {
-  subscribe();
-  loadCustomArtikel();
-  subscribeCustomArtikel();
+window.addEventListener('DOMContentLoaded', function() {
+  initModal();
+  checkAuth();
 });
 </script>
-
-<style>
-.am-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:800;
-  display:flex;align-items:center;justify-content:center}
-.am-bg.hidden{display:none}
-.am-box{background:#fff;border-radius:12px;padding:24px 28px;width:min(560px,95vw);
-  box-shadow:0 8px 40px rgba(0,0,0,.28);position:relative;max-height:94vh;overflow-y:auto}
-.am-box h2{margin-bottom:14px;font-size:1.08rem;color:#2c5282;display:flex;align-items:center;gap:8px}
-.am-f{margin-bottom:12px}
-.am-f label{display:block;font-size:.74rem;font-weight:700;color:#4a5568;
-  margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
-.am-f input,.am-f select{width:100%;padding:7px 10px;border:1px solid #cbd5e0;
-  border-radius:6px;font-size:.88rem;color:#2d3748;background:#f7fafc}
-.am-f input:focus,.am-f select:focus{outline:none;border-color:#4299e1;background:#fff}
-.am-row{display:flex;gap:10px}
-.am-row .am-f{flex:1}
-.am-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
-.am-cancel{padding:7px 16px;border-radius:6px;border:1px solid #cbd5e0;
-  background:#fff;color:#4a5568;cursor:pointer;font-size:.87rem}
-.am-save{padding:7px 18px;border-radius:6px;border:none;
-  background:#2c5282;color:#fff;cursor:pointer;font-size:.87rem;font-weight:700}
-.am-save:hover{background:#2a4a7f}
-.am-x{position:absolute;top:12px;right:14px;background:none;border:none;
-  font-size:1.3rem;cursor:pointer;color:#a0aec0;line-height:1}
-.am-x:hover{color:#4a5568}
-.edit-btn{background:none;border:none;cursor:pointer;font-size:.82rem;
-  color:#a0aec0;padding:3px 6px;border-radius:4px;line-height:1;flex-shrink:0}
-.edit-btn:hover{color:#2c5282;background:#ebf4ff}
-.del-btn{background:none;border:none;cursor:pointer;font-size:.82rem;
-  color:#a0aec0;padding:3px 6px;border-radius:4px;line-height:1;flex-shrink:0}
-.del-btn:hover{color:#e53e3e;background:#fff5f5}
-.am-box h2{margin-bottom:14px;font-size:1.08rem;color:#2c5282;display:flex;align-items:center;gap:8px}
-
-@media(max-width:700px){
-  .artikel-hdr{flex-wrap:wrap;gap:4px}
-  .artikel-meta{flex-wrap:wrap;gap:4px;width:100%}
-  .artikel-name{font-size:.88rem;width:100%}
-  .preis-badge,.menge-badge,.tag{font-size:.68rem;padding:2px 6px}
-  .link-btn{font-size:.72rem;padding:3px 7px}
-  .edit-btn,.del-btn{font-size:.75rem;padding:2px 5px}
-  .gewerk-hdr{padding:10px 12px}
-  .gewerk-ttl{font-size:.9rem}
-  .artikel-card{padding:0}
-  .loc-row{padding:8px 0}
-  .cb-lbl{font-size:.78rem}
-  .am-box{padding:16px 14px}
-  .am-row{flex-direction:column;gap:6px}
-  .orte-grid{grid-template-columns:1fr;max-height:160px}
-  .orte-col+.orte-col{border-left:none;border-top:1px solid #e2e8f0}
-}
-@media(max-width:400px){
-  .artikel-meta .arr{display:none}
-  .gewerk-sum{font-size:.8rem}
-  .fab-new{width:44px;height:44px;font-size:1.4rem;bottom:76px}
-}
-.fab-new{position:fixed;bottom:22px;right:22px;width:52px;height:52px;border-radius:50%;
-  background:#e53e3e;color:#fff;border:none;font-size:1.6rem;cursor:pointer;
-  box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:600;display:flex;align-items:center;
-  justify-content:center;transition:background .15s,transform .15s}
-.fab-new:hover{background:#c53030;transform:scale(1.07)}
-@media(max-width:700px){.fab-new{bottom:84px}}
-.orte-grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid #cbd5e0;
-  border-radius:6px;background:#f7fafc;max-height:200px;overflow-y:auto}
-.orte-col{padding:8px 10px}
-.orte-col+.orte-col{border-left:1px solid #e2e8f0}
-.orte-grp-hdr{font-size:.68rem;font-weight:700;color:#4299e1;text-transform:uppercase;
-  letter-spacing:.06em;margin:6px 0 4px;padding-bottom:2px;border-bottom:1px solid #e2e8f0}
-.orte-grp-hdr:first-child{margin-top:0}
-.orte-cb{display:flex;align-items:center;gap:5px;padding:2px 0;
-  cursor:pointer;font-size:.84rem;color:#2d3748;white-space:nowrap}
-.orte-cb input[type=checkbox]{width:13px;height:13px;accent-color:#2c5282;
-  cursor:pointer;flex-shrink:0}
-.orte-cb:hover{color:#2c5282}
-.orte-menge{flex:0 0 28px;width:28px!important;min-width:0!important;padding:1px 2px;
-  border:1px solid #cbd5e0;border-radius:4px;font-size:.75rem;text-align:center;
-  background:#fff;color:#2d3748;opacity:0;pointer-events:none;transition:opacity .15s;
-  -moz-appearance:textfield}
-.orte-menge::-webkit-inner-spin-button,.orte-menge::-webkit-outer-spin-button{display:none}
-.orte-cb input[type=checkbox]:checked ~ .orte-menge{opacity:1;pointer-events:auto}
-</style>
-
-<button class="fab-new" onclick="openArtikelModal(true)" title="Neuen Artikel anlegen">+</button>
-
-<div class="am-bg hidden" id="artikelModal">
-  <div class="am-box">
-    <button class="am-x" onclick="closeArtikelModal()">x</button>
-    <h2>+ Neuen Artikel anlegen</h2>
-
-    <div class="am-f">
-      <label>Artikelname *</label>
-      <input type="text" id="artArtikel" placeholder="z.B. Unterputz-Steckdose weiss">
-    </div>
-
-    <div class="am-row">
-      <div class="am-f">
-        <label>Gewerk</label>
-        <select id="artGewerk">
-          <option>Elektro</option><option>EDV</option><option>Fenster</option>
-          <option>Entwasserung</option><option>Malerarbeiten</option>
-          <option>Tor</option><option>Tuer</option><option>Sanitaer</option>
-          <option>Heizung</option><option>Boeden</option><option>Fliesen</option>
-          <option>Sonstiges</option>
-        </select>
-      </div>
-      <div class="am-f">
-        <label>Art / Einheit</label>
-        <select id="artArt">
-          <option value="Stueck">Stueck</option><option value="m2">m2</option>
-          <option value="lm">lm</option><option value="Set">Set</option>
-          <option value="kg">kg</option><option value="l">l</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="am-row">
-      <div class="am-f">
-        <label>Preis (EUR)</label>
-        <input type="number" id="artPreis" value="0" min="0" step="0.01">
-      </div>
-      <div class="am-f">
-        <label>URL / Link</label>
-        <input type="url" id="artUrl" placeholder="https://...">
-      </div>
-    </div>
-
-    <div class="am-f">
-      <label>Beschreibung (optional)</label>
-      <input type="text" id="artBeschreibung" placeholder="Kurze Beschreibung">
-    </div>
-
-    <div class="am-f">
-      <label>Einbauorte</label>
-      <div class="orte-grid" id="orteGrid">
-        <div class="orte-col">
-          <div class="orte-grp-hdr">HH - Erdgeschoss</div>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Abstellraum"> Abstellraum <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Bad"> Bad <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Buero"> Buero <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Esszimmer"> Esszimmer <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Gang"> Gang <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:HAR"> HAR <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Kueche"> Kueche <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Speisekammer"> Speisekammer <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Technikraum"> Technikraum <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Treppenhaus"> Treppenhaus <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_EG:Wohnzimmer"> Wohnzimmer <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <div class="orte-grp-hdr">HH - Obergeschoss</div>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:Ankleide"> Ankleide <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:Bad"> Bad <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:Gang"> Gang <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:GaesteAnkleide"> Gaeste Ankleide <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:Gaestezimmer"> Gaestezimmer <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:HWR"> HWR <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:Leonie"> Leonie <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:Schlafen"> Schlafen <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="HH_OG:Treppenhaus"> Treppenhaus <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <div class="orte-grp-hdr">HH - Dach</div>
-          <label class="orte-cb"><input type="checkbox" value="HH_DG:Dach"> Dach <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-        </div>
-        <div class="orte-col">
-          <div class="orte-grp-hdr">ELW - Erdgeschoss</div>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Ankleide"> Ankleide <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Bad"> Bad <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Esszimmer"> Esszimmer <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Gang"> Gang <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Kueche"> Kueche <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Schlafen"> Schlafen <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Terasse"> Terasse <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:WC"> WC <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Wohnzimmer"> Wohnzimmer <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="ELW_EG:Zocken"> Zocken <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <div class="orte-grp-hdr">ELW - Dach</div>
-          <label class="orte-cb"><input type="checkbox" value="ELW_DG:Dachboden"> Dachboden <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <div class="orte-grp-hdr">Aussen</div>
-          <label class="orte-cb"><input type="checkbox" value="Drausen_DG:Dachboden"> Dachboden <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Einfahrt"> Einfahrt <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Garage"> Garage <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Garten"> Garten <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Tor"> Tor <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-          <label class="orte-cb"><input type="checkbox" value="Drausen_EG:Werkstatt"> Werkstatt <input type="number" class="orte-menge" min="1" value="1" title="Menge"></label>
-        </div>
-      </div>
-    </div>
-
-    <div class="am-foot">
-      <button class="am-cancel" onclick="closeArtikelModal()">Abbrechen</button>
-      <button class="am-save" id="artSaveBtn" onclick="saveNewArtikel()">Speichern</button>
-    </div>
-  </div>
-</div>
-
 </body>
 </html>
