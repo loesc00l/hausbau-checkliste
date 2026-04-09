@@ -4,58 +4,86 @@
 <meta charset="UTF-8">
 <title>Artikel Upload → Supabase</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 960px; margin: 40px auto; padding: 0 20px; background: #f8f9fa; }
+  body { font-family: system-ui, sans-serif; max-width: 1000px; margin: 40px auto; padding: 0 20px; background: #f8f9fa; }
   h1 { color: #1a1a2e; }
+  h3 { margin-top: 0; color: #1e293b; }
   .card { background: white; border-radius: 12px; padding: 24px; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
-  .btn { padding: 12px 28px; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; }
-  .btn-primary { background: #4f46e5; color: white; }
+  .btn { padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
+  .btn-primary  { background: #4f46e5; color: white; }
+  .btn-primary:hover  { background: #4338ca; }
   .btn-primary:disabled { background: #a5b4fc; cursor: not-allowed; }
-  .btn-danger { background: #ef4444; color: white; }
-  input[type=file] { display: block; margin: 12px 0; }
+  .btn-sm { padding: 6px 14px; font-size: 13px; }
+  input[type=text], input[type=password], input[type=file] {
+    width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid #e2e8f0;
+    border-radius: 6px; font-size: 14px; margin: 4px 0 12px;
+  }
+  input[type=file] { padding: 6px; }
+  label { font-size: 13px; font-weight: 600; color: #475569; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { background: #f1f5f9; text-align: left; padding: 8px 10px; border-bottom: 2px solid #e2e8f0; }
-  td { padding: 7px 10px; border-bottom: 1px solid #f1f5f9; }
+  th { background: #f1f5f9; text-align: left; padding: 8px 10px; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
+  td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; }
   tr:hover td { background: #fafbff; }
-  .log { background: #0f172a; color: #94a3b8; font-family: monospace; font-size: 12px; padding: 16px; border-radius: 8px; max-height: 300px; overflow-y: auto; }
+  .log { background: #0f172a; color: #94a3b8; font-family: monospace; font-size: 12px;
+         padding: 16px; border-radius: 8px; max-height: 280px; overflow-y: auto; }
   .log .ok  { color: #4ade80; }
   .log .err { color: #f87171; }
   .log .inf { color: #60a5fa; }
   .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-  .badge-green { background: #dcfce7; color: #166534; }
-  .badge-blue  { background: #dbeafe; color: #1e40af; }
-  .badge-gray  { background: #f1f5f9; color: #475569; }
-  #summary { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0; }
-  .stat { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 20px; min-width: 120px; text-align: center; }
-  .stat .num { font-size: 28px; font-weight: 700; color: #4f46e5; }
-  .stat .lbl { font-size: 12px; color: #64748b; margin-top: 2px; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-gray { background: #f1f5f9; color: #475569; }
+  #stats { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0; }
+  .stat { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 18px; text-align: center; }
+  .stat .num { font-size: 26px; font-weight: 700; color: #4f46e5; }
+  .stat .lbl { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .warn { background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px; padding: 10px 14px; font-size: 13px; color: #92400e; }
+  .saved-tag { font-size: 11px; color: #16a34a; margin-left: 8px; }
 </style>
 </head>
 <body>
 
 <h1>📦 Artikel Upload → Supabase</h1>
 
+<!-- ── 1. Supabase-Zugangsdaten ─────────────────────────────────────────── -->
 <div class="card">
-  <h3 style="margin-top:0">1. Excel-Datei wählen</h3>
-  <input type="file" id="fileInput" accept=".xlsx,.xls">
-  <p style="color:#64748b;font-size:13px">Wähle die <strong>Budget_Hausbau.xlsx</strong> — Tabellen "Preise" und "Kostenaufstellung detail" werden gelesen.</p>
+  <h3>1. Supabase-Zugangsdaten <span class="saved-tag" id="savedTag" style="display:none">✓ gespeichert</span></h3>
+  <p class="warn">🔒 Der API-Key wird nur in deinem Browser (localStorage) gespeichert — nie in Git.</p>
+  <label>Supabase URL</label>
+  <input type="text" id="sbUrl" placeholder="https://xxxx.supabase.co">
+  <label>Service Role Key</label>
+  <input type="password" id="sbKey" placeholder="eyJ...">
+  <button class="btn btn-primary btn-sm" onclick="saveCredentials()">💾 Speichern</button>
 </div>
 
+<!-- ── 2. Excel-Datei ──────────────────────────────────────────────────── -->
+<div class="card">
+  <h3>2. Excel-Datei wählen</h3>
+  <input type="file" id="fileInput" accept=".xlsx,.xls">
+  <p style="color:#64748b;font-size:13px">
+    Wähle <strong>Budget_Hausbau.xlsx</strong> — liest Tabellen <em>"Preise"</em> und
+    <em>"Kostenaufstellung detail"</em>.<br>
+    <strong>Menge</strong> = Summe aller Detail-Zeilen pro Artikel (= SUMIF Spalte G) &nbsp;|&nbsp;
+    <strong>Gesamt</strong> = Menge × Preis (Spalte E)
+  </p>
+</div>
+
+<!-- ── 3. Vorschau ────────────────────────────────────────────────────── -->
 <div class="card" id="previewCard" style="display:none">
-  <h3 style="margin-top:0">2. Vorschau</h3>
-  <div id="summary"></div>
+  <h3>3. Vorschau</h3>
+  <div id="stats"></div>
+  <div id="colInfo" style="font-size:12px;color:#64748b;margin:8px 0"></div>
   <div style="overflow-x:auto">
-    <table id="previewTable">
+    <table>
       <thead><tr>
         <th>Artikel</th><th>Gewerk</th><th>Preis</th><th>Menge</th><th>Gesamt</th><th>Orte</th>
       </tr></thead>
       <tbody id="previewBody"></tbody>
     </table>
   </div>
-  <p style="color:#64748b;font-size:12px;margin-top:8px"><strong>Menge</strong> = Summe aller Einträge in "Kostenaufstellung detail" (entspricht SUMIF in Spalte G) &nbsp;|&nbsp; <strong>Gesamt</strong> = Menge × Preis (entspricht Spalte H)</p>
 </div>
 
+<!-- ── 4. Upload ──────────────────────────────────────────────────────── -->
 <div class="card" id="uploadCard" style="display:none">
-  <h3 style="margin-top:0">3. Upload</h3>
+  <h3>4. Upload</h3>
   <button class="btn btn-primary" id="uploadBtn" onclick="doUpload()">▲ Alle Artikel zu Supabase hochladen</button>
   <div class="log" id="logBox" style="margin-top:16px;display:none"></div>
 </div>
@@ -66,12 +94,31 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-// ─── Konfiguration ────────────────────────────────────────────────────────────
-const SB_URL = "https://kimogswconuxijszqpqz.supabase.co";
-const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtpbW9nc3djb251eGlqc3pxcHF6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDE5NzYyNSwiZXhwIjoyMDg5NzczNjI1fQ.zmqm_jRG0XnDw-Ra4OffJXlCrVPnIyNX-0G06eTsdoA";
-const sb = window.supabase.createClient(SB_URL, SB_KEY);
+// ─── Credentials aus localStorage laden ──────────────────────────────────────
+(function loadSaved() {
+  const url = localStorage.getItem('sb_url');
+  const key = localStorage.getItem('sb_key');
+  if (url) document.getElementById('sbUrl').value = url;
+  if (key) document.getElementById('sbKey').value = key;
+  if (url && key) document.getElementById('savedTag').style.display = 'inline';
+})();
 
-let parsedArtikel = [];
+function saveCredentials() {
+  const url = document.getElementById('sbUrl').value.trim();
+  const key = document.getElementById('sbKey').value.trim();
+  if (!url || !key) { alert('Bitte beide Felder ausfüllen.'); return; }
+  localStorage.setItem('sb_url', url);
+  localStorage.setItem('sb_key', key);
+  document.getElementById('savedTag').style.display = 'inline';
+  alert('✓ Zugangsdaten gespeichert.');
+}
+
+function getSbClient() {
+  const url = document.getElementById('sbUrl').value.trim();
+  const key = document.getElementById('sbKey').value.trim();
+  if (!url || !key) { alert('Bitte zuerst Supabase-Zugangsdaten eingeben (Schritt 1).'); return null; }
+  return window.supabase.createClient(url, key);
+}
 
 // ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
 function toFloat(v) {
@@ -83,70 +130,118 @@ function toStr(v) {
   return (v === null || v === undefined) ? '' : String(v).trim();
 }
 
+/** Gibt den Index der Spalte zurück, deren Header-Text den Suchbegriff enthält (case-insensitive) */
+function findCol(headerRow, search) {
+  const s = search.toLowerCase();
+  return headerRow.findIndex(h => h && toStr(h).toLowerCase().includes(s));
+}
+
+// ─── Geparsed ────────────────────────────────────────────────────────────────
+let parsedArtikel = [];
+
 // ─── Excel lesen ─────────────────────────────────────────────────────────────
 document.getElementById('fileInput').addEventListener('change', async function(e) {
   const file = e.target.files[0];
   if (!file) return;
 
   const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { type: 'array', cellFormula: true, cellText: false, cellDates: true });
+  // cellFormula:false → rohe gecachte Werte, kein Formel-Objekt
+  const wb = XLSX.read(buf, { type: 'array', cellFormula: false, cellText: false });
 
   // ── Preise-Sheet ──────────────────────────────────────────────────────────
   const wsP = wb.Sheets['Preise'];
   if (!wsP) { alert('Tabelle "Preise" nicht gefunden!'); return; }
-  const preiseRows = XLSX.utils.sheet_to_json(wsP, { header: 1, defval: null, raw: true });
 
-  // Hyperlinks aus Preise Spalte D sammeln
+  // Alle Zeilen als Array-of-Arrays
+  const preiseRows = XLSX.utils.sheet_to_json(wsP, { header: 1, defval: null, raw: true });
+  const pH = preiseRows[0] || [];  // Header-Zeile
+
+  // Spalten dynamisch aus Header ermitteln
+  const pCol = {
+    artikel:      findCol(pH, 'artikel'),
+    gewerk:       findCol(pH, 'gewerk'),
+    beschreibung: findCol(pH, 'beschreibung'),
+    url:          findCol(pH, 'link'),
+    preis:        findCol(pH, 'preis'),
+    art:          findCol(pH, 'art'),
+  };
+
+  // Hyperlinks aus Spalte "Link/URL" (Spalte D = Index 3 in Preise-Sheet)
+  const linkColIdx = pCol.url >= 0 ? pCol.url : 3;
   const links = {};
-  const range = XLSX.utils.decode_range(wsP['!ref'] || 'A1');
-  for (let r = range.s.r; r <= range.e.r; r++) {
-    const cell = wsP[XLSX.utils.encode_cell({ r, c: 3 })]; // col D = index 3
+  const rng = XLSX.utils.decode_range(wsP['!ref'] || 'A1');
+  for (let r = rng.s.r + 1; r <= rng.e.r; r++) {
+    const cell = wsP[XLSX.utils.encode_cell({ r, c: linkColIdx })];
     if (cell && cell.l && cell.l.Target) links[r] = cell.l.Target;
   }
 
-  // Preise einlesen (ab Zeile 2 = index 1)
   const preiseByArtikel = {};
   for (let i = 1; i < preiseRows.length; i++) {
     const row = preiseRows[i];
-    if (!row[0]) continue;
-    const artikel = toStr(row[0]);
+    const artikel = toStr(row[pCol.artikel]);
+    if (!artikel) continue;
+    const preis = toFloat(row[pCol.preis]) ?? 0;
     preiseByArtikel[artikel] = {
       artikel,
-      gewerk:       toStr(row[1]),
-      beschreibung: toStr(row[2]),
-      url:          links[i] || null,
-      preis:        toFloat(row[4]) ?? 0,
-      art:          toStr(row[5]) || 'Stück',
-      // Spalten G+H enthalten SUMIF/Berechnungs-Formeln → werden im Merge-Schritt
-      // immer selbst aus den Detail-Daten berechnet (unabhängig vom Formel-Cache)
+      gewerk:       toStr(row[pCol.gewerk]),
+      beschreibung: toStr(row[pCol.beschreibung >= 0 ? pCol.beschreibung : 2]),
+      preis,
+      art:          toStr(row[pCol.art >= 0 ? pCol.art : 5]) || 'Stück',
+      url:          links[i + 1] || null,  // SheetJS row i → Excel row i+1 (1-based)
     };
   }
 
   // ── Kostenaufstellung detail ──────────────────────────────────────────────
   const wsD = wb.Sheets['Kostenaufstellung detail'];
   if (!wsD) { alert('Tabelle "Kostenaufstellung detail" nicht gefunden!'); return; }
+
   const detailRows = XLSX.utils.sheet_to_json(wsD, { header: 1, defval: null, raw: true });
+  const dH = detailRows[0] || [];  // Header-Zeile
+
+  // Spalten dynamisch aus Header ermitteln
+  const dCol = {
+    kategorie:    findCol(dH, 'kategorie'),
+    posten:       findCol(dH, 'posten'),
+    gewerk:       findCol(dH, 'gewerk'),
+    ort:          findCol(dH, 'ort'),
+    prio:         findCol(dH, 'prio'),
+    beschreibung: findCol(dH, 'beschreibung'),
+    produkt:      findCol(dH, 'produkt'),
+    menge:        findCol(dH, 'menge'),
+    typ:          findCol(dH, 'typ'),
+    preis:        findCol(dH, 'preis'),
+    gesamt:       findCol(dH, 'gesamt'),
+  };
+
+  // Debug-Info in UI ausgeben
+  document.getElementById('colInfo').innerHTML =
+    `<b>Preise-Spalten:</b> Artikel=${pCol.artikel} Gewerk=${pCol.gewerk} Preis=${pCol.preis} Art=${pCol.art} &nbsp;|&nbsp; ` +
+    `<b>Detail-Spalten:</b> Produkt=${dCol.produkt} Menge=${dCol.menge} Ort=${dCol.ort} Preis=${dCol.preis}`;
+
+  if (dCol.produkt < 0 || dCol.menge < 0) {
+    alert(`Spalten in "Kostenaufstellung detail" nicht gefunden!\nHeader: ${JSON.stringify(dH)}`);
+    return;
+  }
 
   const byProdukt = {};
   for (let i = 1; i < detailRows.length; i++) {
     const row = detailRows[i];
-    const produkt = toStr(row[6]);
+    const produkt = toStr(row[dCol.produkt]);
     if (!produkt) continue;
-    const menge = toFloat(row[7]);
+    const menge = toFloat(row[dCol.menge]);
     if (menge === null) continue;
 
     if (!byProdukt[produkt]) byProdukt[produkt] = [];
     byProdukt[produkt].push({
-      kategorie:    toStr(row[0]),
-      posten:       toStr(row[1]),
-      gewerk:       toStr(row[2]),
-      ort:          toStr(row[3]),
-      prio:         toStr(row[4]),
-      beschreibung: toStr(row[5]),
-      menge:        menge,
-      typ:          toStr(row[8]),
-      preis_einzel: toFloat(row[9]) ?? 0,
-      gesamt:       toFloat(row[10]) ?? 0,
+      kategorie:    toStr(row[dCol.kategorie >= 0 ? dCol.kategorie : 0]),
+      posten:       toStr(row[dCol.posten    >= 0 ? dCol.posten    : 1]),
+      gewerk:       toStr(row[dCol.gewerk    >= 0 ? dCol.gewerk    : 2]),
+      ort:          toStr(row[dCol.ort       >= 0 ? dCol.ort       : 3]),
+      prio:         toStr(row[dCol.prio      >= 0 ? dCol.prio      : 4]),
+      beschreibung: toStr(row[dCol.beschreibung >= 0 ? dCol.beschreibung : 5]),
+      menge,
+      typ:          toStr(row[dCol.typ       >= 0 ? dCol.typ       : 8]),
+      preis_einzel: toFloat(row[dCol.preis   >= 0 ? dCol.preis     : 9]) ?? 0,
     });
   }
 
@@ -154,25 +249,20 @@ document.getElementById('fileInput').addEventListener('change', async function(e
   parsedArtikel = [];
 
   for (const [artikel, info] of Object.entries(preiseByArtikel)) {
-    // Locations: preis_einzel aus Preise-E falls in Detail leer
-    //            gesamt je Location = menge × preis_einzel (selbst berechnet)
     const locs = (byProdukt[artikel] || []).map(loc => {
       const pe = loc.preis_einzel > 0 ? loc.preis_einzel : info.preis;
-      const gs = Math.round(loc.menge * pe * 100) / 100;
-      return { ...loc, preis_einzel: pe, gesamt: gs };
+      return { ...loc, preis_einzel: pe, gesamt: Math.round(loc.menge * pe * 100) / 100 };
     });
 
-    // menge_gesamt = SUMIF aus Kostenaufstellung detail (= was Spalte G berechnet)
+    // menge_gesamt = SUMIF aus Kostenaufstellung detail
     const menge_gesamt = Math.round(locs.reduce((s, l) => s + l.menge, 0) * 1000) / 1000;
 
-    // gesamt = menge_gesamt × preis (= was Spalte H berechnet)
+    // gesamt = menge_gesamt × preis (wie Spalte H)
     const gesamt = Math.round(menge_gesamt * info.preis * 100) / 100;
-
-    const gewerk = info.gewerk || (locs[0]?.gewerk ?? '');
 
     parsedArtikel.push({
       artikel,
-      gewerk,
+      gewerk:       info.gewerk || locs[0]?.gewerk || '',
       beschreibung: info.beschreibung,
       preis:        info.preis,
       art:          info.art,
@@ -183,47 +273,39 @@ document.getElementById('fileInput').addEventListener('change', async function(e
     });
   }
 
-  // Artikel nur in Detail (ohne Preiseintrag)
+  // Artikel nur in Detail (nicht in Preise)
   for (const [produkt, locs] of Object.entries(byProdukt)) {
     if (preiseByArtikel[produkt]) continue;
-    const menge = locs.reduce((s, l) => s + l.menge, 0);
-    const gs    = locs.reduce((s, l) => s + l.gesamt, 0);
+    const menge = Math.round(locs.reduce((s, l) => s + l.menge, 0) * 1000) / 1000;
     parsedArtikel.push({
-      artikel: produkt,
-      gewerk: locs[0]?.gewerk ?? '',
+      artikel:      produkt,
+      gewerk:       locs[0]?.gewerk || '',
       beschreibung: '',
-      preis: 0,
-      art: locs[0]?.typ || 'Stück',
+      preis:        0,
+      art:          locs[0]?.typ || 'Stück',
       menge_gesamt: menge,
-      gesamt: gs,
-      url: null,
-      locations: locs,
+      gesamt:       0,
+      url:          null,
+      locations:    locs.map(l => ({ ...l, preis_einzel: 0, gesamt: 0 })),
     });
   }
 
   parsedArtikel.sort((a, b) => (a.gewerk + a.artikel).localeCompare(b.gewerk + b.artikel));
-
   renderPreview();
 });
 
 // ─── Vorschau ─────────────────────────────────────────────────────────────────
 function renderPreview() {
-  const gewerke = {};
-  let ohnePreis = 0, ohneMenge = 0;
-  parsedArtikel.forEach(a => {
-    gewerke[a.gewerk || '(kein)'] = (gewerke[a.gewerk || '(kein)'] || 0) + 1;
-    if (!a.preis) ohnePreis++;
-    if (!a.menge_gesamt) ohneMenge++;
-  });
+  const gewerke = new Set(parsedArtikel.map(a => a.gewerk || '–'));
+  const ohneMenge = parsedArtikel.filter(a => !a.menge_gesamt).length;
+  const totalGesamt = parsedArtikel.reduce((s, a) => s + a.gesamt, 0);
 
-  // Statistiken
-  const statHtml = `
-    <div class="stat"><div class="num">${parsedArtikel.length}</div><div class="lbl">Artikel gesamt</div></div>
-    <div class="stat"><div class="num">${Object.keys(gewerke).length}</div><div class="lbl">Gewerke</div></div>
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="num">${parsedArtikel.length}</div><div class="lbl">Artikel</div></div>
+    <div class="stat"><div class="num">${gewerke.size}</div><div class="lbl">Gewerke</div></div>
     <div class="stat"><div class="num">${ohneMenge}</div><div class="lbl">Menge = 0</div></div>
-    <div class="stat"><div class="num">${ohnePreis}</div><div class="lbl">Preis = 0</div></div>
+    <div class="stat"><div class="num">${totalGesamt.toLocaleString('de-DE', {maximumFractionDigits:0})} €</div><div class="lbl">Gesamtbudget</div></div>
   `;
-  document.getElementById('summary').innerHTML = statHtml;
 
   const tbody = document.getElementById('previewBody');
   tbody.innerHTML = '';
@@ -232,12 +314,13 @@ function renderPreview() {
     const badge = a.gewerk
       ? `<span class="badge badge-blue">${a.gewerk}</span>`
       : '<span class="badge badge-gray">–</span>';
+    const mengeStyle = !a.menge_gesamt ? 'style="color:#ef4444"' : '';
     tr.innerHTML = `
       <td>${a.url ? `<a href="${a.url}" target="_blank">${a.artikel}</a>` : a.artikel}</td>
       <td>${badge}</td>
-      <td style="text-align:right">${a.preis ? a.preis.toFixed(2) + ' €' : '<span style="color:#94a3b8">–</span>'}</td>
-      <td style="text-align:right">${a.menge_gesamt ? a.menge_gesamt + ' ' + a.art : '<span style="color:#94a3b8">0</span>'}</td>
-      <td style="text-align:right">${a.gesamt ? a.gesamt.toFixed(2) + ' €' : '<span style="color:#94a3b8">0</span>'}</td>
+      <td style="text-align:right">${a.preis ? a.preis.toFixed(2) + ' €' : '–'}</td>
+      <td style="text-align:right" ${mengeStyle}>${a.menge_gesamt} ${a.art}</td>
+      <td style="text-align:right">${a.gesamt ? a.gesamt.toFixed(2) + ' €' : '–'}</td>
       <td style="text-align:center">${a.locations.length}</td>
     `;
     tbody.appendChild(tr);
@@ -251,25 +334,29 @@ function renderPreview() {
 function log(msg, type = 'inf') {
   const box = document.getElementById('logBox');
   box.style.display = 'block';
-  const span = document.createElement('div');
-  span.className = type;
-  span.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
-  box.appendChild(span);
+  const div = document.createElement('div');
+  div.className = type;
+  div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }
 
 async function doUpload() {
+  const sb = getSbClient();
+  if (!sb) return;
+  if (!parsedArtikel.length) { alert('Erst Excel-Datei laden (Schritt 2).'); return; }
+
   const btn = document.getElementById('uploadBtn');
   btn.disabled = true;
   btn.textContent = '⏳ Lade hoch...';
-  log(`Starte Upload von ${parsedArtikel.length} Artikeln...`);
+  log(`Starte Upload: ${parsedArtikel.length} Artikel in Batches à 25…`);
 
   const BATCH = 25;
   let ok = 0, fail = 0;
 
   for (let i = 0; i < parsedArtikel.length; i += BATCH) {
     const chunk = parsedArtikel.slice(i, i + BATCH);
-    const { data, error, status } = await sb
+    const { error, status } = await sb
       .from('hausbau_artikel')
       .upsert(chunk, { onConflict: 'artikel' });
 
@@ -277,16 +364,15 @@ async function doUpload() {
       log(`❌ Batch ${Math.floor(i/BATCH)+1} FEHLER (${status}): ${JSON.stringify(error)}`, 'err');
       fail += chunk.length;
     } else {
-      log(`✓ Batch ${Math.floor(i/BATCH)+1}: ${chunk.length} Artikel OK (Status ${status})`, 'ok');
+      log(`✓ Batch ${Math.floor(i/BATCH)+1}: ${chunk.length} Artikel (Status ${status})`, 'ok');
       ok += chunk.length;
     }
   }
 
-  log(`──────────────────────────────`);
-  log(`Fertig: ${ok} OK, ${fail} Fehler`, fail ? 'err' : 'ok');
-
+  log('──────────────────────────────────────');
+  log(`Fertig: ${ok} OK  |  ${fail} Fehler`, fail ? 'err' : 'ok');
   btn.disabled = false;
-  btn.textContent = '✓ Upload abgeschlossen — erneut hochladen?';
+  btn.textContent = '↺ Erneut hochladen';
 }
 </script>
 </body>
