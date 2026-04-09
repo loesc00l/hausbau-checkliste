@@ -393,77 +393,12 @@
   </main>
 
   <script>
-    const ROOMS = [
-      {ort:"ELW_EG:Bad",       etage:"EG_ELW",      fenster:1, breite:2.155, laenge:3.25,  hoehe:2.53, flaeche:7},
-      {ort:"ELW_EG:Ankleide",  etage:"EG_ELW",      fenster:0, breite:1.35,  laenge:1.593, hoehe:2.53, flaeche:3.93},
-      {ort:"ELW_EG:WC",        etage:"EG_ELW",      fenster:0, breite:1.35,  laenge:3.187, hoehe:2.53, flaeche:2.13},
-      {ort:"ELW_EG:Schlafen",  etage:"EG_ELW",      fenster:1, breite:3.17,  laenge:4.78,  hoehe:2.53, flaeche:15.15},
-      {ort:"ELW_EG:Zocken",    etage:"EG_ELW",      fenster:2, breite:2.365, laenge:3.25,  hoehe:2.53, flaeche:7.68},
-      {ort:"ELW_EG:Wohnzimmer",etage:"EG_ELW",      fenster:1, breite:3.078, laenge:8,     hoehe:2.53, flaeche:28.39},
-      {ort:"ELW_EG:Küche",     etage:"EG_ELW",      fenster:1, breite:3.078, laenge:3.275, hoehe:2.53, flaeche:8.92},
-      {ort:"ELW_EG:Esszimmer", etage:"EG_ELW",      fenster:1, breite:3.078, laenge:3.275, hoehe:2.53, flaeche:10},
-      {ort:"ELW_EG:Gang",      etage:"EG_ELW",      fenster:0, breite:4.735, laenge:1.575, hoehe:2.53, flaeche:7.77},
-      {ort:"ELW_EG:Terasse",   etage:"EG_ELW",      fenster:0, breite:5.5,   laenge:8,     hoehe:2.53, flaeche:44},
-      {ort:"ELW_DG:Dachboden", etage:"DG_ELW",      fenster:0, breite:2.52,  laenge:0,     hoehe:0,    flaeche:0},
-      {ort:"HH_OG:Schlafen",   etage:"OG_HH",       fenster:1, breite:3.07,  laenge:4.265, hoehe:2.52, flaeche:13.1},
-      {ort:"HH_OG:Bad",        etage:"OG_HH",       fenster:1, breite:3.08,  laenge:4.265, hoehe:2.52, flaeche:10.76},
-      {ort:"HH_OG:Ankleide",   etage:"OG_HH",       fenster:1, breite:2.295, laenge:4.265, hoehe:2.52, flaeche:9.79},
-      {ort:"HH_OG:Leonie",     etage:"OG_HH",       fenster:2, breite:5,     laenge:5.755, hoehe:2.52, flaeche:27.36},
-      {ort:"HH_OG:Gästezimmer",etage:"OG_HH",       fenster:1, breite:3.66,  laenge:4.09,  hoehe:2.52, flaeche:16.83},
-      {ort:"HH_OG:Gäste Ankleide",etage:"OG_HH",   fenster:0, breite:2.515, laenge:1.06,  hoehe:2.52, flaeche:2.67},
-      {ort:"HH_OG:HWR",        etage:"OG_HH",       fenster:1, breite:2.74,  laenge:4.265, hoehe:2.52, flaeche:12.52},
-      {ort:"HH_OG:Gang",       etage:"OG_HH",       fenster:0, breite:3.275, laenge:1.495, hoehe:2.52, flaeche:8.97},
-      {ort:"HH_DG:Dach",       etage:"DG_HH",       fenster:0, breite:2.52,  laenge:0,     hoehe:0,    flaeche:0},
-      {ort:"HH_OG:Treppenhaus",etage:"OG_HH",       fenster:1, breite:2.515, laenge:5.08,  hoehe:2.52, flaeche:11.53},
-      {ort:"HH_EG:Wohnzimmer", etage:"EG_HH",       fenster:1, breite:4.25,  laenge:4.76,  hoehe:2.53, flaeche:20.23},
-      {ort:"HH_EG:Küche",      etage:"EG_HH",       fenster:1, breite:2.63,  laenge:3.51,  hoehe:2.53, flaeche:9.76},
-      {ort:"HH_EG:Esszimmer",  etage:"EG_HH",       fenster:1, breite:3.4,   laenge:5.3,   hoehe:2.53, flaeche:26.32},
-      {ort:"HH_EG:Treppenhaus",etage:"EG_HH",       fenster:1, breite:2.515, laenge:5.08,  hoehe:2.53, flaeche:12.79},
-      {ort:"HH_EG:Abstellraum",etage:"EG_HH",       fenster:0, breite:2.515, laenge:3.41,  hoehe:2.53, flaeche:5},
-      {ort:"HH_EG:Büro",       etage:"EG_HH",       fenster:1, breite:3.5,   laenge:4,     hoehe:2.53, flaeche:13.42},
-      {ort:"HH_EG:Speisekammer",etage:"EG_HH",      fenster:1, breite:2.63,  laenge:1.63,  hoehe:2.53, flaeche:4.33},
-      {ort:"HH_EG:Technikraum",etage:"EG_HH",       fenster:0, breite:3.275, laenge:4.3,   hoehe:2.53, flaeche:10.78},
-      {ort:"HH_EG:Bad",        etage:"EG_HH",       fenster:1, breite:2.515, laenge:3.895, hoehe:2.53, flaeche:11.95},
-      {ort:"HH_EG:HAR",        etage:"EG_HH",       fenster:0, breite:2.515, laenge:1.06,  hoehe:2.53, flaeche:2.66},
-      {ort:"HH_EG:Gang",       etage:"EG_HH",       fenster:0, breite:3.5,   laenge:1.5,   hoehe:2.53, flaeche:6.99},
-      {ort:"Drausen_EG:Garage",    etage:"EG_Drausen",  fenster:0, breite:7.06,  laenge:5.77,  hoehe:2.9,  flaeche:40.7},
-      {ort:"Drausen_EG:Werkstatt", etage:"EG_Drausen",  fenster:0, breite:1.93,  laenge:5.77,  hoehe:2.9,  flaeche:11.1},
-    ];
+    let ROOMS = [];
 
     // Fensterdaten aus Excel-Tabelle "Fenster" (Spalten: Raum | Fensterart | Flügel | Länge in m | Breite in m)
-    const WINDOWS = [
-      {ort:"ELW_EG:Bad",          art:"Dreh-Kipp",   fluegel:1, laenge:2.0,  breite:2.3},
-      {ort:"ELW_EG:Schlafen",     art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
-      {ort:"ELW_EG:Zocken",       art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
-      {ort:"ELW_EG:Zocken",       art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
-      {ort:"ELW_EG:Wohnzimmer",   art:"Dreh-Kipp",   fluegel:2, laenge:null, breite:null},
-      {ort:"ELW_EG:Küche",        art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
-      {ort:"ELW_EG:Esszimmer",    art:"Dreh-Kipp",   fluegel:2, laenge:null, breite:null},
-      {ort:"HH_OG:Schlafen",      art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
-      {ort:"HH_OG:Bad",           art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
-      {ort:"HH_OG:Ankleide",      art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
-      {ort:"HH_OG:Leonie",        art:"Dreh-Kipp",   fluegel:2, laenge:null, breite:null},
-      {ort:"HH_OG:Leonie",        art:"Dreh-Kipp",   fluegel:2, laenge:null, breite:null},
-      {ort:"HH_OG:Gästezimmer",   art:"Dreh-Kipp",   fluegel:2, laenge:null, breite:null},
-      {ort:"HH_OG:HWR",           art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
-      {ort:"HH_OG:Treppenhaus",   art:"Fest",        fluegel:0, laenge:null, breite:null},
-      {ort:"HH_EG:Wohnzimmer",    art:"Hebeschiebe", fluegel:1, laenge:null, breite:null},
-      {ort:"HH_EG:Küche",         art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
-      {ort:"HH_EG:Esszimmer",     art:"Hebeschiebe", fluegel:1, laenge:null, breite:null},
-      {ort:"HH_EG:Treppenhaus",   art:"Fest",        fluegel:0, laenge:null, breite:null},
-      {ort:"HH_EG:Büro",          art:"Dreh-Kipp",   fluegel:2, laenge:null, breite:null},
-      {ort:"HH_EG:Speisekammer",  art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
-      {ort:"HH_EG:Bad",           art:"Dreh-Kipp",   fluegel:1, laenge:null, breite:null},
-    ];
+    let WINDOWS = [];
 
-    const SECTIONS = {
-      "EG_ELW": { name: "Einliegerwohnung EG", color: "#48a779", colorClass: "color-elw" },
-      "DG_ELW": { name: "Einliegerwohnung DG", color: "#48a779", colorClass: "color-elw" },
-      "EG_HH": { name: "Haupthaus EG", color: "#4299e1", colorClass: "color-hh-eg" },
-      "OG_HH": { name: "Haupthaus OG", color: "#9f7aea", colorClass: "color-hh-og" },
-      "DG_HH": { name: "Haupthaus DG", color: "#9f7aea", colorClass: "color-hh-og" },
-      "EG_Drausen": { name: "Außenbereich", color: "#c05621", colorClass: "color-drausen" },
-    };
+    let SECTIONS = {};
 
     let currentSection = null;
     const maxFlaeche = Math.max(...ROOMS.map(r => r.flaeche));
@@ -577,8 +512,21 @@
       });
     }
 
-    // Initialize
-    initializeUI();
+
+    async function loadRaeumeVonDB() {
+      const sb = window._sb;
+      if (!sb) return;
+      try {
+        const { data, error } = await sb.from('hausbau_raeume').select('*').order('etage').order('ort');
+        if (error) { console.warn('hausbau_raeume:', error.message); return; }
+        ROOMS=(data||[]).map(r=>({ort:r.ort,etage:r.etage,fenster:r.fenster||0,breite:r.breite,laenge:r.laenge,hoehe:r.hoehe,flaeche:r.flaeche||0}));
+        WINDOWS=(data||[]).flatMap(r=>(r.fenster_detail||[]).map(w=>({ort:r.ort,...w})));
+        SECTIONS={};
+        (data||[]).forEach(r=>{if(r.etage&&!SECTIONS[r.etage])SECTIONS[r.etage]={name:r.etage_name||r.etage,color:r.etage_color||'#4299e1',colorClass:r.etage_color_class||''};});
+        console.log('[DB] Räume:',ROOMS.length);
+      } catch(e){console.warn('loadRaeumeVonDB:',e);}
+    }
+    (async function(){await loadRaeumeVonDB();initializeUI();})();
   </script>
 </body>
 </html>
