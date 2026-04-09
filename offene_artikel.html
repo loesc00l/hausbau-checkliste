@@ -280,14 +280,15 @@ main{max-width:1100px;margin:0 auto;padding:24px 20px}
   }
 
   async function init() {
+    // Schritt 0: Artikel aus Supabase laden
     if (typeof sb !== 'undefined') await loadArtikelVonDB(sb);
+
     if (EINKAUF_DATA.length === 0) {
       document.getElementById('loadingOverlay').innerHTML =
-        '<div class="empty-state"><div class="emoji">📭</div><p>Keine Artikeldaten vorhanden.<br>Bitte sync_einkauf.py ausführen.</p></div>';
+        '<div class="empty-state"><div class="emoji">📭</div><p>Keine Artikeldaten in der Datenbank vorhanden.<br>Bitte sync_artikel_zu_supabase.py ausführen.</p></div>';
       return;
     }
 
-    // Sofort rendern (ohne Supabase-Status)
     document.getElementById('loadingOverlay').style.display = 'none';
     document.getElementById('pageContent').style.display   = 'block';
     renderArtikel();
