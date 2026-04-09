@@ -386,29 +386,40 @@ function flash() {
 
 // ── Daten laden ───────────────────────────────────────────────────────────
 
+    // ── Artikel aus hausbau_artikel (Supabase) laden ─────────────────────────
     async function loadArtikelVonDB(sb) {
       try {
-        const { data, error } = await sb.from('hausbau_artikel').select('*').order('gewerk').order('artikel');
+        const { data, error } = await sb
+          .from('hausbau_artikel').select('*').order('gewerk').order('artikel');
         if (error) { console.warn('hausbau_artikel:', error.message); return; }
-        EINKAUF_DATA = (data||[]).map(r => ({
-          artikel:r.artikel, gewerk:r.gewerk||'', beschreibung:r.beschreibung||'',
-          preis:r.preis||0, art:r.art||'Stück', menge_gesamt:r.menge_gesamt||0,
-          gesamt:r.gesamt||0, url:r.url||null, locations:r.locations||[],
+        EINKAUF_DATA = (data || []).map(r => ({
+          artikel: r.artikel, gewerk: r.gewerk || '', beschreibung: r.beschreibung || '',
+          preis: r.preis || 0, art: r.art || 'Stück',
+          menge_gesamt: r.menge_gesamt || 0, gesamt: r.gesamt || 0,
+          url: r.url || null, locations: r.locations || [],
         }));
-        console.log('[DB] Artikel:',EINKAUF_DATA.length);
-      } catch(e){console.warn('loadArtikelVonDB:',e);}
+        console.log('[DB] Artikel:', EINKAUF_DATA.length);
+      } catch(e) { console.warn('loadArtikelVonDB:', e); }
     }
     async function loadBenutzerVonDB(sb) {
       try {
-        const { data, error } = await sb.from('hausbau_benutzer').select('id,name,initialen,farbe');
+        const { data, error } = await sb
+          .from('hausbau_benutzer').select('id,name,initialen,farbe');
         if (error) { console.warn('hausbau_benutzer:', error.message); return; }
-        if (data&&data.length) USERS=data.map(u=>({id:u.id,name:u.name,initials:u.initialen||u.name[0].toUpperCase(),color:u.farbe||'#2c5282'}));
-        console.log('[DB] Benutzer:',USERS.length);
-      } catch(e){console.warn('loadBenutzerVonDB:',e);}
+        if (data && data.length) USERS = data.map(u => ({
+          id: u.id, name: u.name,
+          initials: u.initialen || u.name[0].toUpperCase(),
+          color: u.farbe || '#2c5282',
+        }));
+        console.log('[DB] Benutzer:', USERS.length);
+      } catch(e) { console.warn('loadBenutzerVonDB:', e); }
     }
 async function loadAll() {
+  // Schritt 0: Artikel-Katalog + Benutzer aus DB laden
   await Promise.all([loadArtikelVonDB(sb), loadBenutzerVonDB(sb)]);
-  rebuildUI();
+  rebuildUI(); // Sofort mit DB-Daten rendern
+
+  // Schritt 1: Einkauf-Status laden
   const {data, error} = await sb.from('hausbau_einkauf_checks').select('*');
   if (error) {
     if (error.code === '42P01') {
