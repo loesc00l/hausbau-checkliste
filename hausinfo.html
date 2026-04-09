@@ -513,20 +513,39 @@
     }
 
 
+    // ── Räume aus hausbau_raeume (Supabase) laden ────────────────────────────
     async function loadRaeumeVonDB() {
       const sb = window._sb;
-      if (!sb) return;
+      if (!sb) { console.warn('Supabase nicht verfügbar'); return; }
       try {
         const { data, error } = await sb.from('hausbau_raeume').select('*').order('etage').order('ort');
         if (error) { console.warn('hausbau_raeume:', error.message); return; }
-        ROOMS=(data||[]).map(r=>({ort:r.ort,etage:r.etage,fenster:r.fenster||0,breite:r.breite,laenge:r.laenge,hoehe:r.hoehe,flaeche:r.flaeche||0}));
-        WINDOWS=(data||[]).flatMap(r=>(r.fenster_detail||[]).map(w=>({ort:r.ort,...w})));
-        SECTIONS={};
-        (data||[]).forEach(r=>{if(r.etage&&!SECTIONS[r.etage])SECTIONS[r.etage]={name:r.etage_name||r.etage,color:r.etage_color||'#4299e1',colorClass:r.etage_color_class||''};});
-        console.log('[DB] Räume:',ROOMS.length);
-      } catch(e){console.warn('loadRaeumeVonDB:',e);}
+        ROOMS   = (data || []).map(r => ({
+          ort: r.ort, etage: r.etage, fenster: r.fenster || 0,
+          breite: r.breite, laenge: r.laenge, hoehe: r.hoehe, flaeche: r.flaeche || 0,
+        }));
+        WINDOWS = (data || []).flatMap(r =>
+          (r.fenster_detail || []).map(w => ({ ort: r.ort, ...w }))
+        );
+        SECTIONS = {};
+        (data || []).forEach(r => {
+          if (r.etage && !SECTIONS[r.etage]) {
+            SECTIONS[r.etage] = {
+              name: r.etage_name || r.etage,
+              color: r.etage_color || '#4299e1',
+              colorClass: r.etage_color_class || '',
+            };
+          }
+        });
+        console.log('[DB] Räume:', ROOMS.length, 'Sections:', Object.keys(SECTIONS).length);
+      } catch(e) { console.warn('loadRaeumeVonDB:', e); }
     }
-    (async function(){await loadRaeumeVonDB();initializeUI();})();
+
+    // Initialize (async – lädt zuerst DB-Daten)
+    (async function() {
+      await loadRaeumeVonDB();
+      initializeUI();
+    })();
   </script>
 </body>
 </html>
