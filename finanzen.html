@@ -399,8 +399,8 @@
     }
 
     .sticky-header { position:sticky; top:0; z-index:300; }
-  
-    /* Sub-Nav Gewerk-Filter */
+
+    /* ── Sub-Nav Gewerk-Filter ─────────────────────────────────── */
     .sub-nav{background:#f7fafc;border-bottom:1px solid #e2e8f0;padding:8px 24px;
       display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:44px}
     .sub-nav-pill{display:inline-flex;align-items:center;gap:4px;padding:5px 13px;
@@ -473,6 +473,12 @@
         <div class="kpi-value" id="ersparnisTotal" style="color:#276749">€0.00</div>
         <div class="kpi-subtext"><span id="ersparnisCount">0</span> Artikel mit Ist-Preis</div>
       </div>
+
+      <div class="kpi-card" id="marktpreisCard" style="display:none;border-left-color:#3182ce">
+        <div class="kpi-label" id="marktpreisLabel">📈 Marktpreise aktuell</div>
+        <div class="kpi-value" id="marktpreisTotal" style="color:#2c5282">€0.00</div>
+        <div class="kpi-subtext"><span id="marktpreisCount">0</span> Artikel geprüft · <span id="marktpreisDatum">—</span></div>
+      </div>
     </div>
 
     <div id="chartContainer" style="display:grid;grid-template-columns:1fr 200px;gap:24px;margin-bottom:24px">
@@ -489,20 +495,65 @@
       </div>
     </div>
 
+    <!-- ── Preisveränderungen ──────────────────────────────────────────── -->
     <div id="preisaenderungSection" style="display:none">
-      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between"><span>📊 Preisveränderungen</span><span id="preisaenderungDatum" style="font-size:.78rem;font-weight:400;color:#666"></span></div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px">
-        <div style="background:#f0fff4;border-radius:8px;padding:14px 16px;border-left:4px solid #38a169"><div style="font-size:.78rem;color:#276749;font-weight:600;margin-bottom:4px">✅ Günstiger</div><div id="paGuenstiger" style="font-size:1.5rem;font-weight:700;color:#276749">—</div><div id="paGuenstigerSum" style="font-size:.75rem;color:#276749;margin-top:2px"></div></div>
-        <div style="background:#fff5f5;border-radius:8px;padding:14px 16px;border-left:4px solid #e53e3e"><div style="font-size:.78rem;color:#c53030;font-weight:600;margin-bottom:4px">⚠️ Teurer</div><div id="paTeurer" style="font-size:1.5rem;font-weight:700;color:#c53030">—</div><div id="paTeurerSum" style="font-size:.75rem;color:#c53030;margin-top:2px"></div></div>
-        <div style="background:#ebf8ff;border-radius:8px;padding:14px 16px;border-left:4px solid #3182ce"><div style="font-size:.78rem;color:#2c5282;font-weight:600;margin-bottom:4px">💰 Gesamtdifferenz</div><div id="paGesamtdiff" style="font-size:1.5rem;font-weight:700;color:#2c5282">—</div><div id="paGesamtdiffLabel" style="font-size:.75rem;color:#2c5282;margin-top:2px"></div></div>
-        <div style="background:#faf5ff;border-radius:8px;padding:14px 16px;border-left:4px solid #805ad5"><div style="font-size:.78rem;color:#553c9a;font-weight:600;margin-bottom:4px">📦 Artikel geprüft</div><div id="paCount" style="font-size:1.5rem;font-weight:700;color:#553c9a">—</div><div style="font-size:.75rem;color:#553c9a;margin-top:2px">mit Marktpreis</div></div>
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>📊 Preisveränderungen</span>
+        <span id="preisaenderungDatum" style="font-size:.78rem;font-weight:400;color:#666"></span>
       </div>
+
+      <!-- Zusammenfassung-Kacheln -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px">
+        <div style="background:#f0fff4;border-radius:8px;padding:14px 16px;border-left:4px solid #38a169">
+          <div style="font-size:.78rem;color:#276749;font-weight:600;margin-bottom:4px">✅ Günstiger</div>
+          <div id="paGuenstiger" style="font-size:1.5rem;font-weight:700;color:#276749">—</div>
+          <div id="paGuenstigerSum" style="font-size:.75rem;color:#276749;margin-top:2px"></div>
+        </div>
+        <div style="background:#fff5f5;border-radius:8px;padding:14px 16px;border-left:4px solid #e53e3e">
+          <div style="font-size:.78rem;color:#c53030;font-weight:600;margin-bottom:4px">⚠️ Teurer</div>
+          <div id="paTeurer" style="font-size:1.5rem;font-weight:700;color:#c53030">—</div>
+          <div id="paTeurerSum" style="font-size:.75rem;color:#c53030;margin-top:2px"></div>
+        </div>
+        <div style="background:#ebf8ff;border-radius:8px;padding:14px 16px;border-left:4px solid #3182ce">
+          <div style="font-size:.78rem;color:#2c5282;font-weight:600;margin-bottom:4px">💰 Gesamtdifferenz</div>
+          <div id="paGesamtdiff" style="font-size:1.5rem;font-weight:700;color:#2c5282">—</div>
+          <div id="paGesamtdiffLabel" style="font-size:.75rem;color:#2c5282;margin-top:2px"></div>
+        </div>
+        <div style="background:#faf5ff;border-radius:8px;padding:14px 16px;border-left:4px solid #805ad5">
+          <div style="font-size:.78rem;color:#553c9a;font-weight:600;margin-bottom:4px">📦 Artikel geprüft</div>
+          <div id="paCount" style="font-size:1.5rem;font-weight:700;color:#553c9a">—</div>
+          <div style="font-size:.75rem;color:#553c9a;margin-top:2px">mit Marktpreis</div>
+        </div>
+      </div>
+
+      <!-- Tabelle -->
       <div class="items-table" style="margin-bottom:28px">
-        <div style="padding:12px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-weight:600;font-size:.9rem;color:#2c5282">Preisänderungen nach Betrag sortiert</span><button onclick="renderPreisaenderung('all')" id="paBtnAll" class="filter-btn active" style="margin-left:auto">Alle</button><button onclick="renderPreisaenderung('down')" id="paBtnDown" class="filter-btn">▼ Günstiger</button><button onclick="renderPreisaenderung('up')" id="paBtnUp" class="filter-btn">▲ Teurer</button></div>
-        <table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr style="background:#1a2f4e;color:#fff"><th style="padding:9px 12px;text-align:left">Artikel</th><th style="padding:9px 12px;text-align:left">Gewerk</th><th style="padding:9px 10px;text-align:right">Planpreis</th><th style="padding:9px 10px;text-align:right">Marktpreis</th><th style="padding:9px 10px;text-align:right">Δ Stück</th><th style="padding:9px 10px;text-align:right">Menge</th><th style="padding:9px 10px;text-align:right">Δ Gesamt</th><th style="padding:9px 10px;text-align:center">Stand</th></tr></thead><tbody id="preisaenderungBody"></tbody></table>
+        <div style="padding:12px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-weight:600;font-size:.9rem;color:#2c5282">Preisänderungen nach Betrag sortiert</span>
+          <button onclick="renderPreisaenderung('all')"   id="paBtnAll"  class="filter-btn active" style="margin-left:auto">Alle</button>
+          <button onclick="renderPreisaenderung('down')"  id="paBtnDown" class="filter-btn">▼ Günstiger</button>
+          <button onclick="renderPreisaenderung('up')"    id="paBtnUp"   class="filter-btn">▲ Teurer</button>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+          <thead>
+            <tr style="background:#1a2f4e;color:#fff">
+              <th style="padding:9px 12px;text-align:left;font-weight:600">Artikel</th>
+              <th style="padding:9px 12px;text-align:left;font-weight:600">Gewerk</th>
+              <th style="padding:9px 10px;text-align:right;font-weight:600">Planpreis</th>
+              <th style="padding:9px 10px;text-align:right;font-weight:600">Marktpreis</th>
+              <th style="padding:9px 10px;text-align:right;font-weight:600">Δ Stück</th>
+              <th style="padding:9px 10px;text-align:right;font-weight:600">Menge</th>
+              <th style="padding:9px 10px;text-align:right;font-weight:600">Δ Gesamt</th>
+              <th style="padding:9px 10px;text-align:center;font-weight:600">Stand</th>
+            </tr>
+          </thead>
+          <tbody id="preisaenderungBody"></tbody>
+        </table>
       </div>
     </div>
-        <div class="section-title">Artikel-Übersicht</div>
+    <!-- ── Ende Preisveränderungen ─────────────────────────────────────── -->
+
+    <div class="section-title">Artikel-Übersicht</div>
 
     <div class="items-table" id="itemsTableContainer">
       <div class="table-controls">
@@ -520,6 +571,8 @@
             <th>Menge</th>
             <th>Geplant</th>
             <th>Ist-Preis</th>
+            <th title="Aktueller Shoppreis (täglich aktualisiert)">🏷️ Marktpreis</th>
+            <th title="Δ Tag: Änderung seit gestern · Δ Budget: Differenz zum geplanten Preis">📊 Δ</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -537,13 +590,14 @@
 
     const PASSWORD = "hausbau2024";
     let _sbClient = null;
-    let currentGewerk = null;
     let currentFilter = "all";
+    let currentGewerk = null;
+    let preisHistorie = {}; // { artikel_key: { preis_aktuell, preis_gespeichert, menge, datum } }
     let data = [];
     let checks = {};
 
     function initSupabase() {
-      _sbClient = window._sb || window._sbClient.createClient(SB_URL, SB_KEY);
+      _sbClient = window._sb || window.supabase.createClient(SB_URL, SB_KEY);
     }
 
     function checkAuth() {
@@ -579,28 +633,43 @@
     }
 
 
+    // ── Artikel aus hausbau_artikel (Supabase) laden ─────────────────────────
     async function loadArtikelVonDB(sbClient) {
       try {
-        const { data, error } = await sbClient.from('hausbau_artikel').select('*').order('gewerk').order('artikel');
+        const { data, error } = await sbClient
+          .from('hausbau_artikel').select('*').order('gewerk').order('artikel');
         if (error) { console.warn('hausbau_artikel:', error.message); return; }
-        EINKAUF_DATA = (data||[]).map(r => ({
-          artikel:r.artikel, gewerk:r.gewerk||'', beschreibung:r.beschreibung||'',
-          preis:r.preis||0, art:r.art||'Stück', menge_gesamt:r.menge_gesamt||0,
-          gesamt:r.gesamt||0, url:r.url||null, locations:r.locations||[],
+        EINKAUF_DATA = (data || []).map(r => ({
+          artikel: r.artikel, gewerk: r.gewerk || '', beschreibung: r.beschreibung || '',
+          preis: r.preis || 0, art: r.art || 'Stück',
+          menge_gesamt: r.menge_gesamt || 0, gesamt: r.gesamt || 0,
+          url: r.url || null, locations: r.locations || [],
         }));
-        console.log('[DB] Artikel:',EINKAUF_DATA.length);
-      } catch(e){console.warn('loadArtikelVonDB:',e);}
+        console.log('[DB] Artikel:', EINKAUF_DATA.length);
+      } catch(e) { console.warn('loadArtikelVonDB:', e); }
     }
     async function loadBenutzerVonDB(sbClient) {
       try {
-        const { data, error } = await sbClient.from('hausbau_benutzer').select('id,name,initialen,farbe');
+        const { data, error } = await sbClient
+          .from('hausbau_benutzer').select('id,name,initialen,farbe');
         if (error) { console.warn('hausbau_benutzer:', error.message); return; }
-        if (data&&data.length) USERS=data.map(u=>({id:u.id,name:u.name,initials:u.initialen||u.name[0].toUpperCase(),color:u.farbe||'#2c5282'}));
-        console.log('[DB] Benutzer:',USERS.length);
-      } catch(e){console.warn('loadBenutzerVonDB:',e);}
+        if (data && data.length) USERS = data.map(u => ({
+          id: u.id, name: u.name,
+          initials: u.initialen || u.name[0].toUpperCase(),
+          color: u.farbe || '#2c5282',
+        }));
+        console.log('[DB] Benutzer:', USERS.length);
+      } catch(e) { console.warn('loadBenutzerVonDB:', e); }
     }
     async function loadData() {
-      // EINKAUF_DATA sofort rendern – Inhalt ist bereits sichtbar
+      // Schritt 0: Supabase-Client initialisieren
+      initSupabase();
+      if (_sbClient) {
+        // Artikel-Katalog + Benutzer aus DB laden (ersetzt eingebettetes EINKAUF_DATA)
+        await Promise.all([loadArtikelVonDB(_sbClient), loadBenutzerVonDB(_sbClient)]);
+      }
+
+      // Schritt 1: Rendern (auch wenn DB nicht erreichbar)
       data = EINKAUF_DATA.length > 0 ? EINKAUF_DATA : generateSampleData();
       checks = {};
       try {
@@ -611,9 +680,8 @@
 
       // Schritt 2: Gekauft/Verbaut-Status aus Supabase nachladen (optional)
       try {
-        initSupabase();
-        if (!supabase) return;
-        const { data: checksData, error } = await supabase
+        if (!_sbClient) return;
+        const { data: checksData, error } = await _sbClient
           .from("hausbau_einkauf_checks")
           .select("item_key,gekauft,verbaut,ist_preis,ist_menge");
         if (error) { console.warn("Supabase nicht erreichbar:", error.message); return; }
@@ -626,6 +694,25 @@
         renderDashboard(); // Status-Update einarbeiten
       } catch (err) {
         console.warn("Supabase-Fehler (Daten bleiben sichtbar):", err.message);
+      }
+
+      // Schritt 3: Tagesaktuelle Preise aus hausbau_preishistorie
+      try {
+        if (!_sbClient) return;
+        const { data: preisData, error: preisErr } = await _sbClient
+          .from("hausbau_preishistorie")
+          .select("artikel,preis_aktuell,preis_gespeichert,menge,gesamt_aktuell,datum")
+          .order("datum", { ascending: false });
+        if (!preisErr && preisData) {
+          preisHistorie = {};
+          preisData.forEach(row => {
+            const key = (row.artikel || "").toLowerCase().replace(/\s+/g," ").trim();
+            if (!preisHistorie[key]) preisHistorie[key] = row; // neuestes Datum zuerst
+          });
+          renderDashboard();
+        }
+      } catch (err) {
+        console.warn("Preishistorie nicht geladen:", err.message);
       }
     }
 
@@ -649,11 +736,11 @@
       const total = gewerke.reduce((s,[,v])=>s+v, 0);
       const nav = document.getElementById('subNav');
       if (!nav) return;
-      let html = '<span class="sub-nav-pill' + (currentGewerk===null?' active':'') + '" onclick="setGewerk(null)">Alle <span class="pill-cost">(' + formatCurrency(total) + ')</span></span>';
+      let html = `<span class="sub-nav-pill${currentGewerk===null?' active':''}" onclick="setGewerk(null)">Alle <span class="pill-cost">(${formatCurrency(total)})</span></span>`;
       gewerke.forEach(([gw, cost]) => {
         const active = currentGewerk === gw ? ' active' : '';
         const gwSafe = gw.replace(/'/g,"\'");
-        html += '<span class="sub-nav-pill' + active + '" onclick="setGewerk(\'' + gwSafe + '\')">' + gw + ' <span class="pill-cost">' + formatCurrency(cost) + '</span></span>';
+        html += `<span class="sub-nav-pill${active}" onclick="setGewerk('${gwSafe}')">${gw} <span class="pill-cost">${formatCurrency(cost)}</span></span>`;
       });
       nav.innerHTML = html;
     }
@@ -665,6 +752,11 @@
       renderGewerkBreakdown();
     }
 
+    function getPreisAktuell(item) {
+      const key = (item.artikel || "").toLowerCase().replace(/\s+/g," ").trim();
+      return preisHistorie[key] || null;
+    }
+
     function renderDashboard() {
       renderKPIs();
       buildSubNav();
@@ -673,41 +765,97 @@
       renderTable();
       renderPreisaenderung('all');
     }
-    let paCurrentFilter='all';
-    function renderPreisaenderung(filter){
-      paCurrentFilter=filter;
-      ['all','down','up'].forEach(f=>{const b=document.getElementById('paBtn'+f[0].toUpperCase()+f.slice(1));if(b)b.className='filter-btn'+(f===filter?' active':'');});
-      const rows=[];
-      data.forEach(item=>{
-        const ph=getPreisAktuell(item);if(!ph||ph.preis_aktuell==null)return;
-        const plan=item.preis||0,mkt=ph.preis_aktuell,qty=(item.locations||[]).reduce((s,l)=>s+(l.menge||0),0)||1;
-        rows.push({artikel:item.artikel,gewerk:item.gewerk,plan,mkt,qty,ds:mkt-plan,dg:(mkt-plan)*qty,datum:ph.datum});
+
+    // ── Preisveränderungen ─────────────────────────────────────────────────
+    let paCurrentFilter = 'all';
+
+    function renderPreisaenderung(filter) {
+      paCurrentFilter = filter;
+
+      // Filter-Buttons highlighten
+      ['all','down','up'].forEach(f => {
+        const btn = document.getElementById('paBtn' + f.charAt(0).toUpperCase() + f.slice(1));
+        if (btn) btn.className = 'filter-btn' + (f === filter ? ' active' : '');
       });
-      const sect=document.getElementById('preisaenderungSection');
-      if(!rows.length){sect.style.display='none';return;}sect.style.display='';
-      const nd=rows.reduce((d,r)=>r.datum>d?r.datum:d,'');
-      document.getElementById('preisaenderungDatum').textContent=nd?'Stand: '+new Date(nd).toLocaleDateString('de-DE'):'';
-      const gn=rows.filter(r=>r.ds<0),tr=rows.filter(r=>r.ds>0),gd=rows.reduce((s,r)=>s+r.dg,0);
-      document.getElementById('paGuenstiger').textContent=gn.length+' Artikel';
-      document.getElementById('paGuenstigerSum').textContent=formatCurrency(Math.abs(gn.reduce((s,r)=>s+r.dg,0)))+' gespart';
-      document.getElementById('paTeurer').textContent=tr.length+' Artikel';
-      document.getElementById('paTeurerSum').textContent='+'+formatCurrency(tr.reduce((s,r)=>s+r.dg,0))+' mehr';
-      document.getElementById('paCount').textContent=rows.length;
-      const el=document.getElementById('paGesamtdiff');
-      el.textContent=formatCurrency(Math.abs(gd));el.style.color=gd<=0?'#276749':'#c53030';
-      document.getElementById('paGesamtdiffLabel').textContent=gd<=0?'günstiger als geplant':'teurer als geplant';
-      el.parentElement.style.borderLeftColor=gd<=0?'#38a169':'#e53e3e';
-      let fil=rows;if(filter==='down')fil=rows.filter(r=>r.ds<0);if(filter==='up')fil=rows.filter(r=>r.ds>0);
-      fil.sort((a,b)=>Math.abs(b.dg)-Math.abs(a.dg));
-      const tb=document.getElementById('preisaenderungBody');
-      tb.innerHTML=fil.map((r,i)=>{
-        const bg=i%2===0?'#fff':'#f7fafc',s=r.ds<0?'▼':r.ds>0?'▲':'=',c=r.ds<0?'#276749':r.ds>0?'#c53030':'#666',bd=r.ds<0?'#f0fff4':r.ds>0?'#fff5f5':bg;
-        const dt=r.datum?new Date(r.datum).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}):'—';
-        const p=r.plan>0?((r.ds/r.plan)*100).toFixed(1):null,ps=p?(' <span style="font-size:.72rem;opacity:.7">('+( r.ds<0?'':'+')+p+'%)</span>'):'';
-        return '<tr style="background:'+bg+';border-bottom:1px solid #e2e8f0"><td style="padding:9px 12px;font-weight:500">'+r.artikel+'</td><td style="padding:9px 12px;color:#666;font-size:.82rem">'+r.gewerk+'</td><td style="padding:9px 10px;text-align:right">'+formatCurrency(r.plan)+'</td><td style="padding:9px 10px;text-align:right;font-weight:600;color:'+c+'">'+formatCurrency(r.mkt)+'</td><td style="padding:9px 10px;text-align:right;background:'+bd+';color:'+c+';font-weight:600">'+s+' '+formatCurrency(Math.abs(r.ds))+ps+'</td><td style="padding:9px 10px;text-align:right;color:#666">'+(r.qty%1===0?r.qty:r.qty.toFixed(1))+'</td><td style="padding:9px 10px;text-align:right;background:'+bd+';color:'+c+';font-weight:700">'+(r.dg<0?'':'+')+formatCurrency(r.dg)+'</td><td style="padding:9px 10px;text-align:center;color:#999;font-size:.78rem">'+dt+'</td></tr>';
+
+      // Daten aufbereiten
+      const rows = [];
+      data.forEach(item => {
+        const ph = getPreisAktuell(item);
+        if (!ph || ph.preis_aktuell == null) return;
+        const planpreis  = item.preis || 0;
+        const marktpreis = ph.preis_aktuell;
+        const menge      = (item.locations || []).reduce((s,l) => s + (l.menge||0), 0) || 1;
+        const diffStueck = marktpreis - planpreis;
+        const diffGesamt = diffStueck * menge;
+        rows.push({
+          artikel:   item.artikel,
+          gewerk:    item.gewerk,
+          planpreis, marktpreis, menge, diffStueck, diffGesamt,
+          datum:     ph.datum
+        });
+      });
+
+      // Zusammenfassung
+      const guenstiger   = rows.filter(r => r.diffStueck < 0);
+      const teurer       = rows.filter(r => r.diffStueck > 0);
+      const gesamtdiff   = rows.reduce((s, r) => s + r.diffGesamt, 0);
+      const guenstigerSum = guenstiger.reduce((s,r) => s + r.diffGesamt, 0);
+      const teurerSum     = teurer.reduce((s,r) => s + r.diffGesamt, 0);
+
+      const sect = document.getElementById('preisaenderungSection');
+      if (rows.length === 0) { sect.style.display = 'none'; return; }
+      sect.style.display = '';
+
+      const newestDatum = rows.reduce((d, r) => r.datum > d ? r.datum : d, '');
+      document.getElementById('preisaenderungDatum').textContent =
+        newestDatum ? 'Stand: ' + new Date(newestDatum).toLocaleDateString('de-DE') : '';
+
+      document.getElementById('paGuenstiger').textContent    = guenstiger.length + ' Artikel';
+      document.getElementById('paGuenstigerSum').textContent = formatCurrency(Math.abs(guenstigerSum)) + ' gespart';
+      document.getElementById('paTeurer').textContent        = teurer.length + ' Artikel';
+      document.getElementById('paTeurerSum').textContent     = '+' + formatCurrency(teurerSum) + ' mehr';
+      document.getElementById('paCount').textContent         = rows.length;
+
+      const gdEl = document.getElementById('paGesamtdiff');
+      gdEl.textContent = formatCurrency(Math.abs(gesamtdiff));
+      gdEl.style.color = gesamtdiff <= 0 ? '#276749' : '#c53030';
+      document.getElementById('paGesamtdiffLabel').textContent =
+        gesamtdiff <= 0 ? 'günstiger als geplant' : 'teurer als geplant';
+      document.getElementById('paGesamtdiff').parentElement.style.borderLeftColor =
+        gesamtdiff <= 0 ? '#38a169' : '#e53e3e';
+
+      // Tabelle
+      let filtered = rows;
+      if (filter === 'down') filtered = rows.filter(r => r.diffStueck < 0);
+      if (filter === 'up')   filtered = rows.filter(r => r.diffStueck > 0);
+      filtered.sort((a,b) => Math.abs(b.diffGesamt) - Math.abs(a.diffGesamt));
+
+      const tbody = document.getElementById('preisaenderungBody');
+      tbody.innerHTML = filtered.map((r, i) => {
+        const rowBg  = i % 2 === 0 ? '#fff' : '#f7fafc';
+        const sign   = r.diffStueck < 0 ? '▼' : (r.diffStueck > 0 ? '▲' : '=');
+        const color  = r.diffStueck < 0 ? '#276749' : (r.diffStueck > 0 ? '#c53030' : '#666');
+        const bgDiff = r.diffStueck < 0 ? '#f0fff4' : (r.diffStueck > 0 ? '#fff5f5' : rowBg);
+        const datum  = r.datum ? new Date(r.datum).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}) : '—';
+        const pct    = r.planpreis > 0 ? ((r.diffStueck / r.planpreis) * 100).toFixed(1) : null;
+        const pctStr = pct !== null ? ` <span style="font-size:.72rem;opacity:.7">(${r.diffStueck<0?'':'+'}${pct}%)</span>` : '';
+        return `<tr style="background:${rowBg};border-bottom:1px solid #e2e8f0">
+          <td style="padding:9px 12px;font-weight:500">${r.artikel}</td>
+          <td style="padding:9px 12px;color:#666;font-size:.82rem">${r.gewerk}</td>
+          <td style="padding:9px 10px;text-align:right">${formatCurrency(r.planpreis)}</td>
+          <td style="padding:9px 10px;text-align:right;font-weight:600;color:${color}">${formatCurrency(r.marktpreis)}</td>
+          <td style="padding:9px 10px;text-align:right;background:${bgDiff};color:${color};font-weight:600">${sign} ${formatCurrency(Math.abs(r.diffStueck))}${pctStr}</td>
+          <td style="padding:9px 10px;text-align:right;color:#666">${r.menge % 1 === 0 ? r.menge : r.menge.toFixed(1)}</td>
+          <td style="padding:9px 10px;text-align:right;background:${bgDiff};color:${color};font-weight:700">${r.diffGesamt<0?'':'+'}${formatCurrency(r.diffGesamt)}</td>
+          <td style="padding:9px 10px;text-align:center;color:#999;font-size:.78rem">${datum}</td>
+        </tr>`;
       }).join('');
-      if(!fil.length)tb.innerHTML='<tr><td colspan="8" style="padding:20px;text-align:center;color:#999">Keine Daten</td></tr>';
-    
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:20px;text-align:center;color:#999">Keine Daten für diesen Filter</td></tr>';
+      }
+    }
 
     function renderKPIs() {
       const total = data.reduce((sum, item) => sum + effGesamt(item), 0);
@@ -747,6 +895,35 @@
         document.getElementById("ersparnisCard").style.display = "";
       } else {
         document.getElementById("ersparnisCard").style.display = "none";
+      }
+
+      // Marktpreise KPI (aus hausbau_preishistorie)
+      let marktTotal = 0, marktGeplant = 0, marktCount = 0, marktDatum = "";
+      data.forEach(item => {
+        const ph = getPreisAktuell(item);
+        if (ph && ph.preis_aktuell != null) {
+          const menge = (item.locations || []).reduce((s,l) => s + (l.menge || 0), 0) || 1;
+          marktTotal   += ph.preis_aktuell * menge;
+          marktGeplant += (item.preis || 0) * menge;
+          marktCount++;
+          if (!marktDatum || ph.datum > marktDatum) marktDatum = ph.datum;
+        }
+      });
+      if (marktCount > 0) {
+        const marktDelta = marktTotal - marktGeplant;
+        const marktEl = document.getElementById("marktpreisTotal");
+        marktEl.textContent = formatCurrency(marktTotal);
+        marktEl.style.color = marktDelta <= 0 ? "#276749" : "#c53030";
+        document.getElementById("marktpreisLabel").textContent =
+          marktDelta <= 0
+            ? `📈 Marktpreise aktuell (${formatCurrency(Math.abs(marktDelta))} günstiger)`
+            : `📈 Marktpreise aktuell (+${formatCurrency(marktDelta)} teurer)`;
+        document.getElementById("marktpreisCount").textContent = marktCount;
+        document.getElementById("marktpreisDatum").textContent =
+          marktDatum ? "Stand: " + new Date(marktDatum).toLocaleDateString("de-DE") : "";
+        document.getElementById("marktpreisCard").style.display = "";
+      } else {
+        document.getElementById("marktpreisCard").style.display = "none";
       }
     }
 
@@ -828,12 +1005,44 @@
         }
 
         const row = document.createElement("tr");
+        const istGes = istGesamt(item);
+        const istCell = istGes !== null
+          ? `<span style="color:${istGes<=gesamt?'#276749':'#c53030'};font-weight:600">${formatCurrency(istGes)}</span>`
+          : '<span style="color:#a0aec0">–</span>';
+
+        // Marktpreis (tagesaktuell aus hausbau_preishistorie)
+        const ph = getPreisAktuell(item);
+        let marktCell = '<span style="color:#a0aec0">–</span>';
+        let deltaCell = '<span style="color:#a0aec0">–</span>';
+        if (ph && ph.preis_aktuell != null) {
+          const menge = (item.locations || []).reduce((s,l) => s + (l.menge||0), 0) || 1;
+          const marktGesamt = ph.preis_aktuell * menge;
+          const marktColor  = ph.preis_aktuell <= (item.preis || 0) ? "#276749" : "#c53030";
+          const datum = ph.datum ? `<br><small style="color:#a0aec0;font-size:.72rem">${new Date(ph.datum).toLocaleDateString("de-DE")}</small>` : "";
+          marktCell = `<span style="color:${marktColor};font-weight:600">${formatCurrency(marktGesamt)}</span>${datum}`;
+
+          // Δ zum geplanten Preis (preis_gespeichert) und Vortag (preis_vortag)
+          const vortag = ph.preis_vortag != null ? ph.preis_vortag : ph.preis_gespeichert;
+          if (vortag != null && vortag !== ph.preis_aktuell) {
+            const delta = (ph.preis_aktuell - vortag) * menge;
+            const deltaColor = delta <= 0 ? "#276749" : "#c53030";
+            const arrow = delta <= 0 ? "▼" : "▲";
+            const label = ph.preis_vortag != null ? "Δ Tag" : "Δ Budget";
+            deltaCell = `<span style="color:${deltaColor};font-weight:600">${arrow} ${formatCurrency(Math.abs(delta))}</span><br><small style="color:#a0aec0;font-size:.7rem">${label}</small>`;
+          } else {
+            deltaCell = '<span style="color:#a0aec0">–</span>';
+          }
+        }
+
         row.innerHTML = `
-          <td><strong>${item.artikel}</strong></td>
+          <td><strong>${item.artikel}</strong>${ph && ph.url ? ` <a href="${ph.url}" target="_blank" style="color:#3182ce;font-size:.75rem;text-decoration:none" title="Shop öffnen">↗</a>` : ''}</td>
           <td>${item.gewerk}</td>
           <td>${formatCurrency(item.preis || 0)}</td>
           <td>${item.locations.length}</td>
           <td>${formatCurrency(gesamt)}</td>
+          <td>${istCell}</td>
+          <td>${marktCell}</td>
+          <td>${deltaCell}</td>
           <td><span class="status-badge ${statusClass}">${statusText}</span></td>
         `;
         tbody.appendChild(row);
