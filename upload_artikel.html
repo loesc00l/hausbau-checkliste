@@ -187,7 +187,7 @@ document.getElementById('fileInput').addEventListener('change', async function(e
       beschreibung: toStr(row[pCol.beschreibung >= 0 ? pCol.beschreibung : 2]),
       preis,
       art:          toStr(row[pCol.art >= 0 ? pCol.art : 5]) || 'Stück',
-      url:          links[i + 1] || null,  // SheetJS row i → Excel row i+1 (1-based)
+      url:          links[i] || null,  // preiseRows[i] entspricht SheetJS-Zeilenindex i
     };
   }
 
