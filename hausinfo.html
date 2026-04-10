@@ -403,14 +403,18 @@
 
     function renderSectionTabs() {
       const nav = document.getElementById("subNav");
+      if (!nav) return;
+      // Nur Sektionen zeigen die auch Daten haben
       const sectionKeys = ["EG_HH", "OG_HH", "EG_ELW", "EG_Drausen"];
       nav.innerHTML = '';
       sectionKeys.forEach(key => {
         const section = SECTIONS[key];
+        if (!section) return; // Sektion noch nicht geladen
         const rooms = ROOMS.filter(r => r.etage === key && r.flaeche > 0).length;
         const btn = document.createElement("span");
         btn.className = "sub-nav-pill" + (key === currentSection ? " active" : "");
         btn.textContent = section.name + (rooms > 0 ? ` (${rooms})` : '');
+        btn.setAttribute('data-key', key);
         btn.addEventListener("click", () => selectSection(key));
         nav.appendChild(btn);
       });
@@ -418,8 +422,8 @@
 
     function selectSection(sectionKey) {
       currentSection = sectionKey;
-      document.querySelectorAll(".sub-nav-pill").forEach((btn, idx) => {
-        btn.classList.toggle("active", ["EG_HH", "OG_HH", "EG_ELW", "EG_Drausen"][idx] === sectionKey);
+      document.querySelectorAll(".sub-nav-pill[data-key]").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute('data-key') === sectionKey);
       });
       renderRoomGrid();
     }
