@@ -150,6 +150,8 @@ header h1{font-size:1.25rem;font-weight:700}
   .loc-row{padding:9px 0}
   .filter-bar{padding:6px 10px;gap:5px}
   .flt{font-size:.72rem;padding:5px 10px}
+  .sub-nav{padding:6px 10px;gap:5px}
+  .sub-nav-pill{font-size:.72rem;padding:5px 10px}
   .chk-box{width:22px;height:22px;flex-shrink:0}
   .todo-add-btn{font-size:.7rem;padding:5px 10px}
 }
@@ -173,6 +175,18 @@ header h1{font-size:1.25rem;font-weight:700}
   color:rgba(255,255,255,.7);padding:5px 12px;border-radius:6px;cursor:pointer;
   font-size:.72rem;transition:all .15s;white-space:nowrap;margin-left:4px}
 .nav-logout:hover{background:rgba(255,255,255,.2);color:#fff}
+
+/* ── Sub-Nav ─────────────────────────────────────────────────────── */
+.sub-nav{background:#f7fafc;border-bottom:1px solid #e2e8f0;padding:8px 24px;
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:44px}
+.sub-nav-pill{display:inline-flex;align-items:center;gap:4px;padding:5px 13px;
+  border-radius:20px;border:1.5px solid #e2e8f0;background:#fff;color:#4a5568;
+  font-size:.75rem;font-weight:600;cursor:pointer;white-space:nowrap;
+  transition:all .15s;user-select:none}
+.sub-nav-pill:hover{border-color:#3182ce;color:#2c5282;background:#ebf8ff}
+.sub-nav-pill.active{background:#2c5282;color:#fff;border-color:#2c5282}
+.sub-nav-pill .pill-cost{font-size:.65rem;opacity:.8;margin-left:2px}
+.sub-nav-pill.active .pill-cost{opacity:.7}
 
 /* ── Kauf/Verbaut Buttons ────────────────────────────────────────── */
 .kauf-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;
@@ -249,6 +263,7 @@ header h1{font-size:1.25rem;font-weight:700}
   <button class="nav-logout" onclick="hausbauLogout()">⎋ Abmelden</button>
 </nav>
   </div>
+<div class="sub-nav" id="subNav"></div>
 
 <main class="main">
   <div id="setupBanner" class="setup-banner hidden">
@@ -728,8 +743,28 @@ function buildArtikelCard(item) {
   </div>`;
 }
 
-// ── Sidebar (kein Sidebar, Top-Nav wird verwendet) ────────────────────────
-function buildSidebar() {}
+// ── Sub-Nav Gewerk-Filter ──────────────────────────────────────────────────
+function buildSidebar() {
+  const nav = document.getElementById('subNav');
+  if (!nav) return;
+  const gewerke = [...new Set(EINKAUF_DATA.map(i => i.gewerk))].sort();
+  const total = EINKAUF_DATA.reduce((s,i) => s + effGesamt(i), 0);
+  const fmt2 = v => v.toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:0});
+  let html = `<span class="sub-nav-pill${activeGw===null?' active':''}" onclick="setGw(null)">Alle <span class="pill-cost">(${fmt2(total)} €)</span></span>`;
+  gewerke.forEach(gw => {
+    const cost = EINKAUF_DATA.filter(i=>i.gewerk===gw).reduce((s,i)=>s+effGesamt(i),0);
+    const active = activeGw === gw ? ' active' : '';
+    const gwS = gw.replace(/'/g,"\\'");
+    html += `<span class="sub-nav-pill${active}" onclick="setGw('${gwS}')">${GEWERK_ICONS[gw]||'📦'} ${gw} <span class="pill-cost">(${fmt2(cost)} €)</span></span>`;
+  });
+  nav.innerHTML = html;
+}
+
+function setGw(gw) {
+  activeGw = gw;
+  buildSidebar();
+  rebuildUI();
+}
 
 // ── Todo-Bereich ───────────────────────────────────────────────────────────
 function buildTodosSection() {
