@@ -32,6 +32,16 @@ header h1{font-size:1.15rem;font-weight:700}
   cursor:pointer;transition:all .15s;white-space:nowrap}
 .nav-logout:hover{background:rgba(255,255,255,.2);color:#fff}
 
+/* ── Sub-Nav ─────────────────────────────────────────────────────── */
+.sub-nav{background:#f7fafc;border-bottom:1px solid #e2e8f0;padding:8px 24px;
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:44px}
+.sub-nav-pill{display:inline-flex;align-items:center;gap:4px;padding:5px 13px;
+  border-radius:20px;border:1.5px solid #e2e8f0;background:#fff;color:#4a5568;
+  font-size:.75rem;font-weight:600;cursor:pointer;white-space:nowrap;text-decoration:none;
+  transition:all .15s;user-select:none}
+.sub-nav-pill:hover{border-color:#3182ce;color:#2c5282;background:#ebf8ff}
+.sub-nav-pill.active{background:#2c5282;color:#fff;border-color:#2c5282}
+
 /* ── Seiten-Inhalt ────────────────────────────────────────────────── */
 main{max-width:600px;margin:36px auto;padding:0 20px 60px}
 
@@ -96,6 +106,11 @@ main{max-width:600px;margin:36px auto;padding:0 20px 60px}
   <button class="nav-logout" onclick="hausbauLogout()">⎋ Abmelden</button>
 </nav>
 </div>
+<div class="sub-nav">
+  <a class="sub-nav-pill active" href="#email">📧 E-Mail</a>
+  <a class="sub-nav-pill" href="#passwort">🔑 Passwort</a>
+  <a class="sub-nav-pill" href="#sitzung">🚪 Abmelden</a>
+</div>
 
 <main>
 
@@ -107,7 +122,7 @@ main{max-width:600px;margin:36px auto;padding:0 20px 60px}
   </div>
 
   <!-- ── E-Mail für Passwort-Reset ─────────────────────────────── -->
-  <div class="section">
+  <div class="section" id="email">
     <h3>📧 E-Mail für Passwort-Reset</h3>
     <p style="font-size:.8rem;color:#718096;margin-bottom:16px;line-height:1.55">
       Hinterlege deine echte E-Mail-Adresse. Sie wird genutzt um dir einen
@@ -127,7 +142,7 @@ main{max-width:600px;margin:36px auto;padding:0 20px 60px}
   </div>
 
   <!-- ── Passwort ändern ────────────────────────────────────────── -->
-  <div class="section">
+  <div class="section" id="passwort">
     <h3>🔑 Passwort ändern</h3>
     <div class="alert alert-ok" id="pwOk">✅ Passwort erfolgreich geändert!</div>
     <div class="alert alert-err" id="pwErr"></div>
@@ -149,7 +164,7 @@ main{max-width:600px;margin:36px auto;padding:0 20px 60px}
   </div>
 
   <!-- ── Abmelden ───────────────────────────────────────────────── -->
-  <div class="section">
+  <div class="section" id="sitzung">
     <h3>🚪 Sitzung</h3>
     <p style="font-size:.8rem;color:#718096;margin-bottom:16px">
       Meldet dich auf diesem Gerät ab. Du kannst dich jederzeit wieder anmelden.
