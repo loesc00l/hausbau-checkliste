@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hausbau Todos Upload</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#2d3748;min-height:100vh;padding:24px}
+h1{font-size:1.3rem;font-weight:700;color:#1a365d;margin-bottom:24px}
+.card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:24px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.card h2{font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#718096;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #f0f4f8}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:.78rem;font-weight:600;color:#4a5568;margin-bottom:5px}
+.field input[type=text],.field input[type=password]{width:100%;padding:9px 13px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.85rem;color:#2d3748;outline:none;transition:border-color .15s}
+.field input:focus{border-color:#3182ce}
+.btn{padding:10px 22px;border:none;border-radius:8px;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .15s;font-family:inherit}
+.btn-primary{background:#2c5282;color:#fff}
+.btn-primary:hover{background:#2a4a7f}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-success{background:#276749;color:#fff}
+.btn-success:hover{background:#22543d}
+.btn-success:disabled{opacity:.5;cursor:not-allowed}
+.btn-sm{padding:5px 12px;font-size:.75rem}
+.file-area{border:2px dashed #bee3f8;border-radius:10px;padding:30px;text-align:center;background:#ebf8ff;cursor:pointer;transition:all .15s}
+.file-area:hover{border-color:#3182ce;background:#dbeafe}
+.file-area input{display:none}
+.file-area p{color:#3182ce;font-weight:600;font-size:.9rem;margin-bottom:6px}
+.file-area small{color:#718096;font-size:.75rem}
+.alert{border-radius:8px;padding:10px 14px;font-size:.82rem;margin-bottom:12px;display:none}
+.alert.show{display:block}
+.alert-ok{background:rgba(72,187,120,.1);border:1px solid rgba(72,187,120,.3);color:#276749}
+.alert-err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#c53030}
+.alert-info{background:rgba(49,130,206,.1);border:1px solid rgba(49,130,206,.3);color:#2c5282}
+
+/* Section summary table */
+.sec-table{width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:16px}
+.sec-table th{background:#f7fafc;padding:8px 12px;text-align:left;font-weight:700;color:#4a5568;border-bottom:2px solid #e2e8f0}
+.sec-table td{padding:7px 12px;border-bottom:1px solid #f0f4f8;vertical-align:middle}
+.sec-table tr:last-child td{border-bottom:none}
+.cnt-badge{display:inline-flex;align-items:center;justify-content:center;background:#ebf4ff;color:#2b6cb0;border-radius:12px;padding:2px 8px;font-size:.68rem;font-weight:700;min-width:28px}
+.sec-key{font-family:monospace;background:#f7fafc;border-radius:4px;padding:2px 6px;font-size:.75rem;color:#553c9a}
+
+/* Preview */
+.preview-wrap{max-height:440px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;font-size:.78rem}
+.group-hdr{background:#f7fafc;padding:8px 14px;font-weight:700;color:#2d3748;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:1}
+.group-hdr .gkap{font-size:.68rem;color:#718096;font-weight:400}
+.room-hdr{background:#fffbf0;padding:5px 14px 5px 28px;font-weight:600;color:#744210;border-bottom:1px solid #f0f4f8;font-size:.75rem}
+.task-row{padding:5px 14px 5px 42px;border-bottom:1px solid #f9fafb;color:#4a5568;line-height:1.4}
+.gewerk-tag{display:inline-block;background:#ebf4ff;color:#2b6cb0;border-radius:4px;padding:1px 6px;font-size:.68rem;font-weight:700;margin-right:4px}
+
+/* Stats */
+.stat-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.stat{background:#f7fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 16px;text-align:center;min-width:90px}
+.stat-num{font-size:1.4rem;font-weight:800;color:#2c5282}
+.stat-lbl{font-size:.68rem;color:#718096;margin-top:2px}
+
+.progress-bar{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin-top:10px}
+.progress-fill{height:100%;background:#2c5282;border-radius:3px;transition:width .3s}
+.log-area{background:#1a2030;color:#e2e8f0;border-radius:8px;padding:14px;font-family:monospace;font-size:.78rem;max-height:200px;overflow-y:auto;white-space:pre-wrap;line-height:1.6}
+.ok{color:#68d391}.err{color:#fc8181}.info{color:#90cdf4}
+
+#step2,#step3,#step4{display:none}
+</style>
+</head>
+<body>
+<h1>📋 Hausbau Todos Upload</h1>
+
+<div id="alertBox" class="alert"></div>
+
+<!-- Step 1: Credentials -->
+<div class="card" id="step1">
+  <h2>Schritt 1 – Supabase Zugangsdaten</h2>
+  <div class="field">
+    <label>Supabase URL</label>
+    <input type="text" id="sbUrl" placeholder="https://xyz.supabase.co">
+  </div>
+  <div class="field">
+    <label>Service Role Key</label>
+    <input type="password" id="sbKey" placeholder="eyJ...">
+  </div>
+  <button class="btn btn-primary" onclick="saveAndContinue()">Speichern & weiter</button>
+</div>
+
+<!-- Step 2: File -->
+<div class="card" id="step2">
+  <h2>Schritt 2 – Budget_Hausbau.xlsx auswählen</h2>
+  <div class="file-area" onclick="document.getElementById('fileInput').click()">
+    <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="loadFile(this)">
+    <p>📂 Budget_Hausbau.xlsx auswählen</p>
+    <small>Sheet "Todos nach Raum" wird automatisch gelesen</small>
+  </div>
+  <div id="fileStatus" style="margin-top:10px;font-size:.8rem;color:#718096"></div>
+</div>
+
+<!-- Step 3: Preview -->
+<div class="card" id="step3">
+  <h2>Schritt 3 – Vorschau &amp; Bereich-Zuordnung</h2>
+  <div class="stat-row" id="statRow"></div>
+
+  <table class="sec-table" id="secTable">
+    <thead><tr><th>Excel-Bereich</th><th>Etage</th><th>→ Section-Key</th><th>Aufgaben</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <h2 style="margin-top:0;margin-bottom:12px">Vorschau (gruppiert)</h2>
+  <div class="preview-wrap" id="previewWrap"></div>
+</div>
+
+<!-- Step 4: Upload -->
+<div class="card" id="step4">
+  <h2>Schritt 4 – Upload starten</h2>
+  <div class="alert alert-info show" style="margin-bottom:14px">
+    ℹ️ Bestehende Einträge mit gleichem Schlüssel werden aktualisiert (Upsert). Neue werden eingefügt.
+  </div>
+  <button class="btn btn-success" id="uploadBtn" onclick="startUpload()">🚀 Upload starten</button>
+  <div class="progress-bar" style="display:none;margin-top:12px" id="progBar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  <div class="log-area" id="logArea" style="display:none;margin-top:12px"></div>
+</div>
+
+<script>
+// ── State ───────────────────────────────────────────────────────────────────
+let SB_URL = '', SB_KEY = '';
+let MAPPED = [];  // [{section, floor, room, task_text, sort_order}]
+
+// ── Section-Mapping: Bereich + Etage → section name (muss zu META in index.html passen) ──
+function deriveSection(bereich, etage) {
+  const b = (bereich || '').toLowerCase();
+  // Außen / Draußen
+  if (b.includes('drausen') || b.includes('außen') || b.includes('aussen')) return 'Drausen - Aussenbereich';
+  // ELW – Einliegerwohnung
+  if (b.includes('elw') || b.includes('einlieger')) return 'ELW - Einliegerwohnung';
+  // HH – Haupthaus (default)
+  return 'HH - Haupthaus';
+}
+
+// Readable labels für Anzeige in der Vorschau
+const SEC_LABELS = {
+  'HH - Haupthaus':         'Haupthaus',
+  'ELW - Einliegerwohnung': 'ELW',
+  'Drausen - Aussenbereich':'Außenbereich',
+};
+
+// Floor abbreviation from Etage string (wird als floor-Spalte gespeichert)
+function floorAbbrev(etage) {
+  const e = (etage || '').toLowerCase();
+  if (e.includes('ober'))  return 'OG';
+  if (e.includes('dach'))  return 'DG';
+  if (e.includes('erdge')) return 'EG';
+  if (e.includes('gebae') || e.includes('gebäu')) return 'Außen';
+  return etage || 'EG';
+}
+
+// ── Schritt 1 ──────────────────────────────────────────────────────────────
+(function loadSaved() {
+  const url = localStorage.getItem('sb_url');
+  const key = localStorage.getItem('sb_key');
+  if (url) document.getElementById('sbUrl').value = url;
+  if (key) document.getElementById('sbKey').value = key;
+})();
+
+function saveAndContinue() {
+  SB_URL = document.getElementById('sbUrl').value.trim().replace(/\/$/, '');
+  SB_KEY = document.getElementById('sbKey').value.trim();
+  if (!SB_URL || !SB_KEY) { showAlert('Bitte URL und Key eingeben.', 'err'); return; }
+  localStorage.setItem('sb_url', SB_URL);
+  localStorage.setItem('sb_key', SB_KEY);
+  document.getElementById('step2').style.display = 'block';
+  document.getElementById('step2').scrollIntoView({behavior:'smooth'});
+}
+
+// ── Schritt 2 ──────────────────────────────────────────────────────────────
+function loadFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('fileStatus').textContent = `Lese ${file.name}…`;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      parseExcel(wb, file.name);
+    } catch(err) {
+      showAlert('Fehler beim Lesen: ' + err.message, 'err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseExcel(wb, fileName) {
+  // Ziel-Sheet: "Todos nach Raum" (bevorzugt), sonst erstes Sheet
+  const targetSheet = wb.SheetNames.find(n =>
+    n.toLowerCase().includes('todos nach raum') ||
+    n.toLowerCase().includes('todo') ||
+    n.toLowerCase().includes('aufgabe')
+  ) || wb.SheetNames[0];
+
+  const ws = wb.Sheets[targetSheet];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+
+  // Header-Zeile suchen (enthält "Bereich" und "Raum")
+  let headerIdx = 0;
+  for (let i = 0; i < Math.min(rows.length, 5); i++) {
+    const r = rows[i].map(c => c ? String(c).toLowerCase() : '');
+    if (r.some(c => c.includes('bereich')) && r.some(c => c.includes('raum'))) {
+      headerIdx = i;
+      break;
+    }
+  }
+
+  const hdr = rows[headerIdx].map(c => c ? String(c).toLowerCase().trim() : '');
+  // Spalten-Indizes
+  const iBereich = hdr.findIndex(h => h === 'bereich' || h.startsWith('bereich'));
+  const iEtage   = hdr.findIndex(h => h.includes('etage') || h.includes('bereich / etage'));
+  const iRaum    = hdr.findIndex(h => h === 'raum' || h.startsWith('raum'));
+  const iGewerk  = hdr.findIndex(h => h.includes('gewerk'));
+  const iAufgabe = hdr.findIndex(h => h === 'aufgabe' || h.startsWith('aufgabe'));
+  const iDetails = hdr.findIndex(h => h.includes('details') || h.includes('unterschritte'));
+  const iStatus  = hdr.findIndex(h => h.includes('status'));
+  const iPrio    = hdr.findIndex(h => h.includes('priorität') || h.includes('prio'));
+
+  MAPPED = [];
+  let sort = 0;
+
+  for (let i = headerIdx + 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || !row.some(c => c != null && String(c).trim() !== '')) continue;
+
+    const bereich = iBereich >= 0 && row[iBereich] ? String(row[iBereich]).trim() : '';
+    const etage   = iEtage   >= 0 && row[iEtage]   ? String(row[iEtage]).trim()   : '';
+    const raum    = iRaum    >= 0 && row[iRaum]    ? String(row[iRaum]).trim()    : '';
+    const gewerk  = iGewerk  >= 0 && row[iGewerk]  ? String(row[iGewerk]).trim()  : '';
+    const aufgabe = iAufgabe >= 0 && row[iAufgabe] ? String(row[iAufgabe]).trim() : '';
+
+    // Zeilen ohne Aufgabe oder Raum überspringen
+    if (!aufgabe || !raum) continue;
+    // Zeilen ohne gültige Bereichs-Info überspringen (z.B. rein numerische Felder)
+    if (!bereich || /^\d+$/.test(bereich)) continue;
+
+    const section = deriveSection(bereich, etage);
+    const floor   = floorAbbrev(etage);
+    const task_text = gewerk ? `[${gewerk}] ${aufgabe}` : aufgabe;
+
+    sort++;
+    MAPPED.push({ section, floor, room: raum, task_text, sort_order: sort });
+  }
+
+  if (MAPPED.length === 0) {
+    showAlert(`Keine Aufgaben im Sheet "${targetSheet}" gefunden. Spalten prüfen.`, 'err');
+    return;
+  }
+
+  const statusText = `✓ ${MAPPED.length} Aufgaben aus "${targetSheet}" geladen.`;
+  document.getElementById('fileStatus').textContent = statusText;
+
+  renderSummaryTable();
+  renderStats();
+  renderPreview();
+  document.getElementById('step3').style.display = 'block';
+  document.getElementById('step4').style.display = 'block';
+  document.getElementById('step3').scrollIntoView({behavior:'smooth'});
+}
+
+// ── Summary Table ──────────────────────────────────────────────────────────
+function renderSummaryTable() {
+  // Zähle Aufgaben pro Bereich-Etage-Kombination
+  const groups = {};
+  MAPPED.forEach(t => {
+    const key = t.section + '||' + t.floor;
+    if (!groups[key]) groups[key] = { section: t.section, floor: t.floor, count: 0 };
+    groups[key].count++;
+  });
+
+  const tbody = document.querySelector('#secTable tbody');
+  tbody.innerHTML = '';
+
+  // Bereich-Namen rückwärts aus section key ableiten
+  const BEREICH_MAP = {
+    'HH - Haupthaus':          'HH – Haupthaus',
+    'ELW - Einliegerwohnung':  'ELW – Einliegerwohnung',
+    'Drausen - Aussenbereich': 'Außen / Draußen',
+  };
+
+  Object.values(groups)
+    .sort((a,b) => a.section.localeCompare(b.section))
+    .forEach(g => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${BEREICH_MAP[g.section] || g.section}</td>
+        <td>${g.floor}</td>
+        <td><span class="sec-key">${g.section}</span></td>
+        <td><span class="cnt-badge">${g.count}</span></td>`;
+      tbody.appendChild(tr);
+    });
+}
+
+function renderStats() {
+  const secCounts = {};
+  MAPPED.forEach(t => { secCounts[t.section] = (secCounts[t.section] || 0) + 1; });
+  let html = `<div class="stat"><div class="stat-num">${MAPPED.length}</div><div class="stat-lbl">Aufgaben gesamt</div></div>`;
+  Object.entries(secCounts)
+    .sort((a,b) => a[0].localeCompare(b[0]))
+    .forEach(([s, n]) => {
+      html += `<div class="stat"><div class="stat-num">${n}</div><div class="stat-lbl">${SEC_LABELS[s] || s}</div></div>`;
+    });
+  document.getElementById('statRow').innerHTML = html;
+}
+
+function renderPreview() {
+  // Gruppiere nach section → room
+  const grouped = {};
+  MAPPED.forEach(t => {
+    if (!grouped[t.section]) grouped[t.section] = {};
+    if (!grouped[t.section][t.room]) grouped[t.section][t.room] = [];
+    grouped[t.section][t.room].push({ task: t.task_text });
+  });
+
+  const secOrder = ['EG_HH','OG_HH','DG_HH','EG_ELW','OG_ELW','DG_ELW','EG_Drausen'];
+  const sortedSecs = Object.keys(grouped).sort((a,b) =>
+    (secOrder.indexOf(a)+1||99) - (secOrder.indexOf(b)+1||99)
+  );
+
+  let html = '';
+  sortedSecs.forEach(sec => {
+    const rooms = grouped[sec];
+    const total = Object.values(rooms).reduce((s,v) => s + v.length, 0);
+    html += `<div class="group-hdr">📁 ${SEC_LABELS[sec] || sec} <span class="gkap"><span class="sec-key">${sec}</span> · ${total} Aufgaben</span></div>`;
+    Object.entries(rooms).forEach(([room, tasks]) => {
+      html += `<div class="room-hdr">🔧 ${esc(room)}</div>`;
+      tasks.forEach(t => {
+        // Gewerk-Tag hervorheben [Gewerk]
+        const taskHtml = t.task.replace(/^\[([^\]]+)\]\s*/, '<span class="gewerk-tag">$1</span> ');
+        html += `<div class="task-row">• ${taskHtml}</div>`;
+      });
+    });
+  });
+  document.getElementById('previewWrap').innerHTML = html;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Upload ──────────────────────────────────────────────────────────────────
+async function startUpload() {
+  if (MAPPED.length === 0) { showAlert('Keine Daten zum Hochladen.', 'err'); return; }
+
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Wird hochgeladen…';
+
+  const logArea  = document.getElementById('logArea');
+  const progBar  = document.getElementById('progBar');
+  const progFill = document.getElementById('progFill');
+  logArea.style.display = 'block';
+  progBar.style.display = 'block';
+  logArea.innerHTML = '<span class="info">Starte Upload…</span>\n';
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'apikey': SB_KEY,
+    'Authorization': `Bearer ${SB_KEY}`,
+    'Prefer': 'return=minimal'
+  };
+
+  // Schritt 1: Alle vorhandenen Tasks löschen
+  logArea.innerHTML += '<span class="info">🗑️ Lösche bestehende Aufgaben…</span>\n';
+  try {
+    const delResp = await fetch(`${SB_URL}/rest/v1/hausbau_tasks?sort_order=gte.0`, {
+      method: 'DELETE',
+      headers
+    });
+    if (!delResp.ok) {
+      const errText = await delResp.text();
+      logArea.innerHTML += `<span class="err">✗ Löschen fehlgeschlagen: ${errText.slice(0,200)}</span>\n`;
+      btn.disabled = false;
+      btn.textContent = '🔄 Nochmal versuchen';
+      return;
+    }
+    logArea.innerHTML += '<span class="ok">✓ Tabelle geleert</span>\n';
+  } catch(e) {
+    logArea.innerHTML += `<span class="err">✗ Netzwerkfehler beim Löschen: ${e.message}</span>\n`;
+    btn.disabled = false;
+    btn.textContent = '🔄 Nochmal versuchen';
+    return;
+  }
+
+  // Schritt 2: Neue Tasks in Batches einfügen
+  const BATCH = 50;
+  let uploaded = 0, errors = 0;
+
+  for (let i = 0; i < MAPPED.length; i += BATCH) {
+    const batch = MAPPED.slice(i, i + BATCH);
+    try {
+      const resp = await fetch(`${SB_URL}/rest/v1/hausbau_tasks`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(batch)
+      });
+      if (!resp.ok) {
+        const err = await resp.text();
+        logArea.innerHTML += `<span class="err">✗ Batch ${Math.floor(i/BATCH)+1}: ${err.slice(0,200)}</span>\n`;
+        errors += batch.length;
+      } else {
+        uploaded += batch.length;
+        logArea.innerHTML += `<span class="ok">✓ ${uploaded}/${MAPPED.length} hochgeladen</span>\n`;
+      }
+    } catch(e) {
+      logArea.innerHTML += `<span class="err">✗ Netzwerkfehler: ${e.message}</span>\n`;
+      errors += batch.length;
+    }
+    progFill.style.width = (Math.min(i + BATCH, MAPPED.length) / MAPPED.length * 100) + '%';
+    logArea.scrollTop = logArea.scrollHeight;
+  }
+
+  progFill.style.width = '100%';
+  if (errors === 0) {
+    logArea.innerHTML += `\n<span class="ok">✅ Fertig! ${uploaded} Aufgaben erfolgreich hochgeladen.</span>\n`;
+    showAlert(`✅ ${uploaded} Aufgaben in Supabase gespeichert!`, 'ok');
+  } else {
+    logArea.innerHTML += `\n<span class="err">⚠️ ${errors} Fehler, ${uploaded} erfolgreich.</span>\n`;
+    showAlert(`⚠️ Upload abgeschlossen mit ${errors} Fehlern.`, 'err');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🔄 Nochmal hochladen';
+}
+
+function showAlert(msg, type) {
+  const el = document.getElementById('alertBox');
+  el.className = `alert alert-${type} show`;
+  el.textContent = msg;
+  el.scrollIntoView({behavior:'smooth'});
+  setTimeout(() => el.classList.remove('show'), 8000);
+}
+</script>
+</body>
+</html>
