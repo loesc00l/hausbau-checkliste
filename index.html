@@ -31,6 +31,18 @@ header h1{font-size:1.15rem;font-weight:700}
   cursor:pointer;transition:all .15s;white-space:nowrap}
 .nav-logout:hover{background:rgba(255,255,255,.2);color:#fff}
 
+/* ── Sub-Nav ─────────────────────────────────────────────────────── */
+.sub-nav{background:#f7fafc;border-bottom:1px solid #e2e8f0;padding:8px 24px;
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:44px}
+.sub-nav-pill{display:inline-flex;align-items:center;gap:4px;padding:5px 13px;
+  border-radius:20px;border:1.5px solid #e2e8f0;background:#fff;color:#4a5568;
+  font-size:.75rem;font-weight:600;cursor:pointer;white-space:nowrap;
+  transition:all .15s;user-select:none}
+.sub-nav-pill:hover{border-color:#3182ce;color:#2c5282;background:#ebf8ff}
+.sub-nav-pill.active{background:#2c5282;color:#fff;border-color:#2c5282}
+.sub-nav-pill .pill-count{font-size:.65rem;opacity:.8;margin-left:2px}
+.sub-nav-pill.active .pill-count{opacity:.7}
+
 /* ── Header Extras ───────────────────────────────────────────────── */
 .hdr-sub{font-size:.78rem;opacity:.7;margin-top:2px}
 .hdr-right{margin-left:auto;display:flex;align-items:center;gap:14px}
@@ -233,6 +245,7 @@ header h1{font-size:1.15rem;font-weight:700}
   <button class="nav-logout" onclick="hausbauLogout()">⎋ Abmelden</button>
 </nav>
 </div>
+<div class="sub-nav" id="subNav"></div>
 
 <div class="modal-bg hidden" id="userModal">
   <div class="modal">
@@ -331,6 +344,7 @@ let details = {};  // task_key → {description, status, priority, due_date}
 let me      = null;
 let flt     = 'all';
 let srch    = '';
+let activeSec = null;
 let _detKey = null;
 let _detAss = '';
 
@@ -456,6 +470,7 @@ async function loadAll() {
     (custom[k] ??= []).push(r.task_text);
   });
 
+  buildSubNav();
   rebuildUI();
   } catch(e) {
     showError('Unerwarteter Fehler: ' + e.message);
@@ -688,11 +703,42 @@ function setFlt(f, btn) {
 }
 
 // ── UI aufbauen ───────────────────────────────────────────────────────────
+function buildSubNav() {
+  const nav = document.getElementById('subNav');
+  if (!nav) return;
+  const secs = Object.keys(tasks);
+  // Gesamtanzahl Aufgaben pro Sektion zählen
+  function countTasks(s) {
+    let n = 0;
+    for (const floors of Object.values(tasks[s] || {}))
+      for (const rooms of Object.values(floors))
+        for (const ts of Object.values(rooms)) n += ts.length;
+    return n;
+  }
+  const total = secs.reduce((s,k) => s + countTasks(k), 0);
+  let html = `<span class="sub-nav-pill${activeSec===null?' active':''}" onclick="setSec(null)">Alle <span class="pill-count">(${total})</span></span>`;
+  secs.forEach(s => {
+    const m = META[s] || {icon:'🏠'};
+    const n = countTasks(s);
+    const active = activeSec === s ? ' active' : '';
+    const sSafe = s.replace(/'/g,"\\'");
+    html += `<span class="sub-nav-pill${active}" onclick="setSec('${sSafe}')">${m.icon} ${s} <span class="pill-count">(${n})</span></span>`;
+  });
+  nav.innerHTML = html;
+}
+
+function setSec(s) {
+  activeSec = s;
+  buildSubNav();
+  rebuildUI();
+}
+
 function rebuildUI() {
   if (!Object.keys(tasks).length) return;
   let html = '';
 
   for (const [s, floors] of Object.entries(tasks)) {
+    if (activeSec !== null && s !== activeSec) continue;
     const m = META[s] || {icon:'🏠', color:'#2c5282'};
     html += `<div class="sec-hdr" id="sec_${slug(s)}">
       <span class="sec-ico">${m.icon}</span>
