@@ -703,28 +703,50 @@ function setFlt(f, btn) {
 }
 
 // ── UI aufbauen ───────────────────────────────────────────────────────────
+// Feste Reihenfolge der Sektionen (verhindert doppelte/fehlende Einträge)
+const SEC_ORDER = ['HH - Haupthaus', 'ELW - Einliegerwohnung', 'Drausen - Aussenbereich'];
+
 function buildSubNav() {
   const nav = document.getElementById('subNav');
   if (!nav) return;
-  const secs = Object.keys(tasks);
-  // Gesamtanzahl Aufgaben pro Sektion zählen
-  function countTasks(s) {
+
+  // Aufgaben zählen – alle DB-Schlüssel die zur Sektion gehören summieren
+  function countTasks(sec) {
     let n = 0;
-    for (const floors of Object.values(tasks[s] || {}))
+    for (const [k, floors] of Object.entries(tasks)) {
+      if (!secMatches(k, sec)) continue;
       for (const rooms of Object.values(floors))
         for (const ts of Object.values(rooms)) n += ts.length;
+    }
     return n;
   }
-  const total = secs.reduce((s,k) => s + countTasks(k), 0);
+
+  const total = Object.values(tasks)
+    .flatMap(f => Object.values(f))
+    .flatMap(r => Object.values(r))
+    .reduce((s, ts) => s + ts.length, 0);
+
   let html = `<span class="sub-nav-pill${activeSec===null?' active':''}" onclick="setSec(null)">Alle <span class="pill-count">(${total})</span></span>`;
-  secs.forEach(s => {
-    const m = META[s] || {icon:'🏠'};
+  SEC_ORDER.forEach(s => {
     const n = countTasks(s);
+    if (n === 0) return; // Sektion ohne Daten ausblenden
+    const m = META[s] || {icon:'🏠'};
     const active = activeSec === s ? ' active' : '';
     const sSafe = s.replace(/'/g,"\\'");
     html += `<span class="sub-nav-pill${active}" onclick="setSec('${sSafe}')">${m.icon} ${s} <span class="pill-count">(${n})</span></span>`;
   });
   nav.innerHTML = html;
+}
+
+// Prüft ob ein DB-Section-Key zur angezeigten Sektion gehört
+// Unterstützt sowohl Kurzcodes (EG_HH, OG_HH…) als auch volle Namen
+function secMatches(dbKey, displaySec) {
+  if (dbKey === displaySec) return true;
+  const k = dbKey.toUpperCase();
+  if (displaySec === 'HH - Haupthaus')          return k.includes('_HH') || k === 'HH';
+  if (displaySec === 'ELW - Einliegerwohnung')   return k.includes('_ELW') || k.includes('ELW');
+  if (displaySec === 'Drausen - Aussenbereich')  return k.includes('DRAUSEN') || k.includes('AUSSEN') || k.includes('AUSSEN');
+  return false;
 }
 
 function setSec(s) {
@@ -738,11 +760,12 @@ function rebuildUI() {
   let html = '';
 
   for (const [s, floors] of Object.entries(tasks)) {
-    if (activeSec !== null && s !== activeSec) continue;
-    const m = META[s] || {icon:'🏠', color:'#2c5282'};
+    if (activeSec !== null && !secMatches(s, activeSec)) continue;
+    const m = META[s] || META[SEC_ORDER.find(sec => secMatches(s, sec))] || {icon:'🏠', color:'#2c5282'};
+    const displayName = SEC_ORDER.find(sec => secMatches(s, sec)) || s;
     html += `<div class="sec-hdr" id="sec_${slug(s)}">
       <span class="sec-ico">${m.icon}</span>
-      <span class="sec-ttl">${s}</span></div>`;
+      <span class="sec-ttl">${displayName}</span></div>`;
 
     for (const [f, rooms] of Object.entries(floors)) {
       const fid = slug(s+f);
