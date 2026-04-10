@@ -31,12 +31,16 @@ main{max-width:1100px;margin:0 auto;padding:24px 20px}
 .sum-sub{font-size:.72rem;color:#a0aec0;margin-top:2px}
 
 /* ── Filter-Chips ──────────────────────────────────────────────── */
-.filter-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px;align-items:center}
-.filter-row span{font-size:.78rem;color:#718096;font-weight:600;margin-right:4px}
-.chip{padding:5px 14px;border-radius:20px;border:1.5px solid #e2e8f0;
-  background:#fff;font-size:.75rem;cursor:pointer;color:#4a5568;transition:all .15s;font-weight:500}
-.chip:hover{border-color:#2c5282;color:#2c5282}
-.chip.active{background:#2c5282;border-color:#2c5282;color:#fff;font-weight:600}
+.sub-nav{background:#f7fafc;border-bottom:1px solid #e2e8f0;padding:8px 24px;
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:44px}
+.sub-nav-pill{display:inline-flex;align-items:center;gap:4px;padding:5px 13px;
+  border-radius:20px;border:1.5px solid #e2e8f0;background:#fff;color:#4a5568;
+  font-size:.75rem;font-weight:600;cursor:pointer;white-space:nowrap;
+  transition:all .15s;user-select:none}
+.sub-nav-pill:hover{border-color:#3182ce;color:#2c5282;background:#ebf8ff}
+.sub-nav-pill.active{background:#2c5282;color:#fff;border-color:#2c5282}
+.sub-nav-pill .pill-count{font-size:.65rem;opacity:.8;margin-left:2px}
+.sub-nav-pill.active .pill-count{opacity:.7}
 
 /* ── Gewerk-Gruppe ─────────────────────────────────────────────── */
 .gewerk-section{margin-bottom:32px}
@@ -97,6 +101,9 @@ main{max-width:1100px;margin:0 auto;padding:24px 20px}
   </div>
   <div class="hdr-badge">🌐 Öffentlich</div>
 </header>
+<div class="sub-nav" id="subNav">
+  <span class="sub-nav-pill active" data-gewerk="all" onclick="setFilter('all',this)">Alle</span>
+</div>
 
 <main>
   <div id="loadingOverlay" class="loading-overlay">⏳ Artikel werden geladen…</div>
@@ -119,12 +126,6 @@ main{max-width:1100px;margin:0 auto;padding:24px 20px}
         <div class="sum-value" id="sumKat">0</div>
         <div class="sum-sub">Gewerke mit offenen Artikeln</div>
       </div>
-    </div>
-
-    <!-- Filter-Chips -->
-    <div class="filter-row" id="filterRow">
-      <span>Filtern:</span>
-      <button class="chip active" data-gewerk="all" onclick="setFilter('all',this)">Alle</button>
     </div>
 
     <!-- Artikel-Listen -->
@@ -173,7 +174,7 @@ main{max-width:1100px;margin:0 auto;padding:24px 20px}
 
   function setFilter(gewerk, btn) {
     activeFilter = gewerk;
-    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.sub-nav-pill').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     renderArtikel();
   }
@@ -188,20 +189,18 @@ main{max-width:1100px;margin:0 auto;padding:24px 20px}
   }
 
   function renderFilterChips(offen) {
-    const row = document.getElementById('filterRow');
-    // Behalte "Alle"-Button, entferne alte Chips
-    const chips = row.querySelectorAll('[data-gewerk]:not([data-gewerk="all"])');
-    chips.forEach(c => c.remove());
-
+    const nav = document.getElementById('subNav');
+    if (!nav) return;
+    const total = offen.length;
     const gewerke = [...new Set(offen.map(i => i.gewerk))].sort();
+    let html = `<span class="sub-nav-pill${activeFilter==='all'?' active':''}" data-gewerk="all" onclick="setFilter('all',this)">Alle <span class="pill-count">(${total})</span></span>`;
     gewerke.forEach(g => {
-      const btn = document.createElement('button');
-      btn.className = 'chip' + (activeFilter === g ? ' active' : '');
-      btn.dataset.gewerk = g;
-      btn.textContent = (GEWERK_ICONS[g] || '📦') + ' ' + g;
-      btn.onclick = () => setFilter(g, btn);
-      row.appendChild(btn);
+      const cnt = offen.filter(i=>i.gewerk===g).length;
+      const active = activeFilter === g ? ' active' : '';
+      const gS = g.replace(/'/g,"\\'");
+      html += `<span class="sub-nav-pill${active}" data-gewerk="${g}" onclick="setFilter('${gS}',this)">${GEWERK_ICONS[g]||'📦'} ${g} <span class="pill-count">(${cnt})</span></span>`;
     });
+    nav.innerHTML = html;
   }
 
   function renderArtikel() {
