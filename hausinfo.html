@@ -154,35 +154,15 @@
       margin-top: 24px;
     }
 
-    .tab-container {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-
-    .tab-btn {
-      padding: 10px 16px;
-      border: 1px solid #ccc;
-      background: #fff;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: .85rem;
-      font-weight: 500;
-      transition: all .2s;
-      white-space: nowrap;
-    }
-
-    .tab-btn:hover {
-      background: #f0f4f8;
-      border-color: #999;
-    }
-
-    .tab-btn.active {
-      background: #2c5282;
-      color: #fff;
-      border-color: #2c5282;
-    }
+    /* Sub-Nav uses .sub-nav / .sub-nav-pill */
+    .sub-nav{background:#f7fafc;border-bottom:1px solid #e2e8f0;padding:8px 24px;
+      display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:44px}
+    .sub-nav-pill,.tab-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 13px;
+      border-radius:20px;border:1.5px solid #e2e8f0;background:#fff;color:#4a5568;
+      font-size:.75rem;font-weight:600;cursor:pointer;white-space:nowrap;
+      transition:all .15s;user-select:none}
+    .sub-nav-pill:hover,.tab-btn:hover{border-color:#3182ce;color:#2c5282;background:#ebf8ff}
+    .sub-nav-pill.active,.tab-btn.active{background:#2c5282;color:#fff;border-color:#2c5282}
 
     .room-grid {
       display: grid;
@@ -341,6 +321,7 @@
     <button class="nav-logout" onclick="hausbauLogout()">⎋ Abmelden</button>
   </nav>
   </div>
+  <div class="sub-nav" id="subNav"></div>
 
   <main>
     <div class="kpi-grid" id="kpiGrid">
@@ -368,9 +349,6 @@
         <div class="kpi-subtext">Räume mit Fenstern</div>
       </div>
     </div>
-
-    <div class="section-title">Bereiche</div>
-    <div class="tab-container" id="tabContainer"></div>
 
     <div class="room-grid" id="roomGrid"></div>
 
@@ -424,21 +402,23 @@
     }
 
     function renderSectionTabs() {
-      const container = document.getElementById("tabContainer");
-      const sections = ["EG_HH", "OG_HH", "EG_ELW", "EG_Drausen"];
-      sections.forEach(key => {
+      const nav = document.getElementById("subNav");
+      const sectionKeys = ["EG_HH", "OG_HH", "EG_ELW", "EG_Drausen"];
+      nav.innerHTML = '';
+      sectionKeys.forEach(key => {
         const section = SECTIONS[key];
-        const btn = document.createElement("button");
-        btn.className = "tab-btn";
-        btn.textContent = section.name;
+        const rooms = ROOMS.filter(r => r.etage === key && r.flaeche > 0).length;
+        const btn = document.createElement("span");
+        btn.className = "sub-nav-pill" + (key === currentSection ? " active" : "");
+        btn.textContent = section.name + (rooms > 0 ? ` (${rooms})` : '');
         btn.addEventListener("click", () => selectSection(key));
-        container.appendChild(btn);
+        nav.appendChild(btn);
       });
     }
 
     function selectSection(sectionKey) {
       currentSection = sectionKey;
-      document.querySelectorAll(".tab-btn").forEach((btn, idx) => {
+      document.querySelectorAll(".sub-nav-pill").forEach((btn, idx) => {
         btn.classList.toggle("active", ["EG_HH", "OG_HH", "EG_ELW", "EG_Drausen"][idx] === sectionKey);
       });
       renderRoomGrid();
