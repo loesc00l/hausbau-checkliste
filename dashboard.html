@@ -238,8 +238,6 @@ main{padding:24px 28px;max-width:1400px;margin:0 auto}
   <span class="nav-user" id="navUser"></span>
   <button class="nav-logout" onclick="hausbauLogout()">⎋ Abmelden</button>
 </nav>
-</div>
-
 <div class="sub-nav" id="dashNavSec">
   <span class="sub-nav-pill active" onclick="setDashSec('all',this)">🌐 Alle</span>
   <span class="sub-nav-pill" onclick="setDashSec('HH - Haupthaus',this)">🏡 Haupthaus</span>
@@ -250,6 +248,7 @@ main{padding:24px 28px;max-width:1400px;margin:0 auto}
 </div>
 <div class="sub-nav-l2" id="dashNavFloor"></div>
 <div class="sub-nav-l3" id="dashNavRoom"></div>
+</div>
 
 <main>
   <div id="root"><div class="loading-msg">⏳ Dashboard wird geladen…</div></div>
@@ -281,14 +280,74 @@ async function loadDashboard() {
       sb.from('hausbau_custom_tasks').select('section,floor,room,task_text'),
     ]);
     if (r1.error) { showErr(r1.error.message); return; }
-    _allTasks  = [...(r1.data||[]), ...(r3.data||[])];
+    _allTasks  = [...(r1.data||[]), ...(r3.data||[])].map(t => ({...t, floor: normalizeFloor(t.floor)}));
     _allChecks = r2.data || [];
+    buildDashFloorNav();
+    buildDashRoomNav();
     renderDashboard();
   } catch(e) { showErr(e.message); }
 }
 function showErr(msg) {
   document.getElementById('root').innerHTML =
     `<div style="padding:60px;text-align:center;color:#ef4444">⚠️ ${msg}</div>`;
+}
+
+// ── Etage normalisieren ────────────────────────────────────────────────────
+function normalizeFloor(f) {
+  if (!f) return 'EG';
+  const s = f.toUpperCase();
+  if (s.startsWith('EG')) return 'EG';
+  if (s.startsWith('OG') || s.startsWith('1.OG') || s.startsWith('2.OG')) return 'OG';
+  if (s.startsWith('DG')) return 'DG';
+  const l = f.toLowerCase();
+  if (l.includes('erdge'))  return 'EG';
+  if (l.includes('ober'))   return 'OG';
+  if (l.includes('dach'))   return 'DG';
+  if (l.includes('drausen') || l.includes('aussen') || l.includes('außen')) return 'Außen';
+  return f;
+}
+
+// ── Struktur (Quelle: Excel "Todos nach Raum") ─────────────────────────────
+const STRUCTURE = {
+  'HH - Haupthaus': {
+    'EG': ['Bad','Büro','Flur','HAR','Haustechnikraum','Küche','Speisekammer','Treppenhaus','Wohnen / Essen'],
+    'OG': ['Ankleidezimmer','Bad','Flur','Gast','Gäste Ankleide','HWR','Kinderzimmer','Schlafzimmer (Eltern)','Treppenhaus'],
+    'DG': ['Dachboden']
+  },
+  'ELW - Einliegerwohnung': {
+    'EG': ['Ankleide','Bad','Esszimmer','Flur','Küche','Schlafzimmer','Terrasse','WC','Wohnen / Essen','Zocken'],
+    'DG': ['Dachboden']
+  },
+  'Drausen - Aussenbereich': {
+    'Außen': ['Terrasse Nord (Haupteingang)','Terrasse Süd (Gartenseite)'],
+    'EG':   ['Einfahrt','Garage','Garten','Grundstückstor','Pool','Werkstatt','Zaun'],
+    'DG':   ['Dachboden Garage']
+  }
+};
+
+function isELW(k)     { return k.includes('ELW') || k.includes('EINLIEGER'); }
+function isDrausen(k) { return k.includes('DRAUSEN') || k.includes('AUSSEN') || k.includes('AUßEN'); }
+function secMatchesDash(dbKey, displaySec) {
+  if (dbKey === displaySec) return true;
+  const k = dbKey.toUpperCase();
+  if (displaySec === 'ELW - Einliegerwohnung')  return isELW(k);
+  if (displaySec === 'Drausen - Aussenbereich') return isDrausen(k);
+  if (displaySec === 'HH - Haupthaus')          return !isELW(k) && !isDrausen(k);
+  return false;
+}
+
+function countDashTasks(sec, floor, room) {
+  let n = 0;
+  const secs = sec === 'all' ? Object.keys(STRUCTURE) : [sec];
+  for (const s of secs) {
+    for (const t of _allTasks) {
+      if (!secMatchesDash(t.section, s)) continue;
+      if (floor && t.floor !== floor) continue;
+      if (room  && t.room  !== room)  continue;
+      n++;
+    }
+  }
+  return n;
 }
 
 // ── Filter & Suche ─────────────────────────────────────────────────────────
@@ -316,19 +375,23 @@ function setDashRoom(r) {
 
 function buildDashFloorNav() {
   const nav = document.getElementById('dashNavFloor');
-  if (_secFlt === 'all') { nav.classList.remove('visible'); return; }
-  const floors = new Map();
-  _allTasks.filter(t => t.section === _secFlt).forEach(t => {
-    floors.set(t.floor, (floors.get(t.floor)||0)+1);
-  });
-  if (floors.size <= 1) { nav.classList.remove('visible'); return; }
+  const secs = _secFlt === 'all' ? Object.keys(STRUCTURE) : [_secFlt];
+  const floorMap = new Map();
+  for (const sec of secs) {
+    for (const fl of Object.keys(STRUCTURE[sec] || {})) {
+      const n = countDashTasks(sec, fl, null);
+      if (n > 0) floorMap.set(fl, (floorMap.get(fl)||0) + n);
+    }
+  }
+  const tot0 = [...floorMap.values()].reduce((s,n)=>s+n,0);
+  if (tot0 === 0) { nav.classList.remove('visible'); return; }
   nav.classList.add('visible');
-  const sorted = [...floors.entries()].sort((a,b)=>{
+  const sorted = [...floorMap.entries()].sort((a,b)=>{
     const ia=DASH_FLOOR_ORDER.indexOf(a[0]),ib=DASH_FLOOR_ORDER.indexOf(b[0]);
     if(ia!==-1&&ib!==-1) return ia-ib; return a[0].localeCompare(b[0]);
   });
-  const tot = [...floors.values()].reduce((s,n)=>s+n,0);
-  let html = `<span class="sub-nav-breadcrumb">▸</span><span class="sub-nav-pill${_floorFlt==='all'?' active':''}" onclick="setDashFloor('all')">Alle Etagen <span class="pill-count">(${tot})</span></span>`;
+  const tot = [...floorMap.values()].reduce((s,n)=>s+n,0);
+  let html = `<span class="sub-nav-pill${_floorFlt==='all'?' active':''}" onclick="setDashFloor('all')">Alle Etagen <span class="pill-count">(${tot})</span></span>`;
   sorted.forEach(([f,n])=>{
     const a=_floorFlt===f?' active':'';
     html+=`<span class="sub-nav-pill${a}" onclick="setDashFloor('${f}')">${f} <span class="pill-count">(${n})</span></span>`;
@@ -338,16 +401,21 @@ function buildDashFloorNav() {
 
 function buildDashRoomNav() {
   const nav = document.getElementById('dashNavRoom');
-  if (_secFlt === 'all' || _floorFlt === 'all') { nav.classList.remove('visible'); return; }
-  const rooms = new Map();
-  _allTasks.filter(t=>t.section===_secFlt && t.floor===_floorFlt).forEach(t=>{
-    rooms.set(t.room,(rooms.get(t.room)||0)+1);
-  });
-  if (rooms.size <= 1) { nav.classList.remove('visible'); return; }
+  if (_floorFlt === 'all') { nav.classList.remove('visible'); return; }
+  const secs = _secFlt === 'all' ? Object.keys(STRUCTURE) : [_secFlt];
+  const roomMap = new Map();
+  for (const sec of secs) {
+    for (const r of (STRUCTURE[sec]?.[_floorFlt] || [])) {
+      const n = countDashTasks(sec, _floorFlt, r);
+      if (n > 0) roomMap.set(r, (roomMap.get(r)||0) + n);
+    }
+  }
+  const tot0 = [...roomMap.values()].reduce((s,n)=>s+n,0);
+  if (tot0 === 0) { nav.classList.remove('visible'); return; }
   nav.classList.add('visible');
-  const sorted = [...rooms.entries()].sort((a,b)=>a[0].localeCompare(b[0],'de'));
-  const tot = [...rooms.values()].reduce((s,n)=>s+n,0);
-  let html = `<span class="sub-nav-breadcrumb">▸▸</span><span class="sub-nav-pill${_roomFlt==='all'?' active':''}" onclick="setDashRoom('all')">Alle Räume <span class="pill-count">(${tot})</span></span>`;
+  const sorted = [...roomMap.entries()].sort((a,b)=>a[0].localeCompare(b[0],'de'));
+  const tot = [...roomMap.values()].reduce((s,n)=>s+n,0);
+  let html = `<span class="sub-nav-pill${_roomFlt==='all'?' active':''}" onclick="setDashRoom('all')">Alle Räume <span class="pill-count">(${tot})</span></span>`;
   sorted.forEach(([r,n])=>{
     const a=_roomFlt===r?' active':''; const rS=r.replace(/'/g,"\\'");
     html+=`<span class="sub-nav-pill${a}" onclick="setDashRoom('${rS}')">${r} <span class="pill-count">(${n})</span></span>`;
@@ -366,7 +434,7 @@ function renderDashboard() {
 
   // Bereichs-Filter
   if (_secFlt !== 'all') {
-    tasks = tasks.filter(t => t.section === _secFlt);
+    tasks = tasks.filter(t => secMatchesDash(t.section, _secFlt));
     const keys = new Set(tasks.map(t => tkey(t.section,t.floor,t.room,t.task_text)));
     checks = checks.filter(c => keys.has(c.task_key));
   }
