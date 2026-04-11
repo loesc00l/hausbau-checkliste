@@ -164,6 +164,12 @@
     .sub-nav-pill:hover,.tab-btn:hover{border-color:#3182ce;color:#2c5282;background:#ebf8ff}
     .sub-nav-pill.active,.tab-btn.active{background:#2c5282;color:#fff;border-color:#2c5282}
 
+    /* ── Sub-Nav Level 2 ───────────────────────────────────────────────── */
+    .sub-nav-l2{background:#edf2f7;border-bottom:1px solid #e2e8f0;padding:6px 24px 6px 36px;display:none;align-items:center;gap:5px;flex-wrap:wrap}
+    .sub-nav-l2.visible{display:flex}
+    .sub-nav-l2 .sub-nav-pill{font-size:.72rem;padding:4px 10px;color:#4a5568;border-color:#cbd5e0}
+    .sub-nav-breadcrumb{font-size:.7rem;color:#a0aec0;margin-right:4px;user-select:none}
+
     .room-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -322,6 +328,7 @@
   </nav>
   </div>
   <div class="sub-nav" id="subNav"></div>
+  <div class="sub-nav-l2" id="subNavRoom"></div>
 
   <main>
     <div class="kpi-grid" id="kpiGrid">
@@ -379,6 +386,7 @@
     let SECTIONS = {};
 
     let currentSection = null;
+    let currentRoom = null;
     const maxFlaeche = Math.max(...ROOMS.map(r => r.flaeche));
 
     function initializeUI() {
@@ -425,14 +433,39 @@
       document.querySelectorAll(".sub-nav-pill[data-key]").forEach(btn => {
         btn.classList.toggle("active", btn.getAttribute('data-key') === sectionKey);
       });
+      buildRoomNav();
       renderRoomGrid();
+    }
+
+    function selectRoom(roomName) {
+      currentRoom = roomName;
+      document.querySelectorAll('#subNavRoom .sub-nav-pill').forEach(b=>
+        b.classList.toggle('active', b.getAttribute('data-room')===roomName)
+      );
+      renderRoomGrid();
+    }
+
+    function buildRoomNav() {
+      const nav = document.getElementById('subNavRoom');
+      if (!nav || !currentSection) { if(nav) nav.classList.remove('visible'); return; }
+      const sectionRooms = ROOMS.filter(r=>r.etage===currentSection && r.flaeche>0);
+      if (sectionRooms.length <= 1) { nav.classList.remove('visible'); return; }
+      nav.classList.add('visible');
+      currentRoom = null; // reset when section changes
+      let html = `<span class="sub-nav-breadcrumb">▸</span><span class="sub-nav-pill active" data-room="all" onclick="selectRoom(null)">Alle Räume <span class="pill-count">(${sectionRooms.length})</span></span>`;
+      sectionRooms.sort((a,b)=>a.name.localeCompare(b.name,'de')).forEach(r=>{
+        const rS = r.name.replace(/'/g,"\\'");
+        html += `<span class="sub-nav-pill" data-room="${r.name}" onclick="selectRoom('${rS}')">${r.name}</span>`;
+      });
+      nav.innerHTML = html;
     }
 
     function renderRoomGrid() {
       const grid = document.getElementById("roomGrid");
       grid.innerHTML = "";
 
-      const sectionRooms = ROOMS.filter(r => r.etage === currentSection && r.flaeche > 0);
+      let sectionRooms = ROOMS.filter(r => r.etage === currentSection && r.flaeche > 0);
+      if (currentRoom) sectionRooms = sectionRooms.filter(r => r.name === currentRoom);
       const section = SECTIONS[currentSection];
 
       sectionRooms.forEach(room => {
