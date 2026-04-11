@@ -342,88 +342,107 @@ function esc(s) {
 }
 
 // ── Upload ──────────────────────────────────────────────────────────────────
+// Sicherheitsprinzip: NIEMALS bestehende Daten löschen oder überschreiben.
+// Online-Fortschritte (Häkchen etc.) liegen in hausbau_checks – diese Tabelle wird nie berührt.
+// Ablauf: 1) vorhandene Keys laden  2) nur echte Neueinträge einfügen
 async function startUpload() {
   if (MAPPED.length === 0) { showAlert('Keine Daten zum Hochladen.', 'err'); return; }
 
   const btn = document.getElementById('uploadBtn');
   btn.disabled = true;
-  btn.textContent = '⏳ Wird hochgeladen…';
+  btn.textContent = '⏳ Wird geprüft…';
 
   const logArea  = document.getElementById('logArea');
   const progBar  = document.getElementById('progBar');
   const progFill = document.getElementById('progFill');
   logArea.style.display = 'block';
   progBar.style.display = 'block';
-  logArea.innerHTML = '<span class="info">Starte Upload…</span>\n';
+  logArea.innerHTML = '<span class="info">🔍 Lade bestehende Aufgaben aus Supabase…</span>\n';
 
-  const headers = {
-    'Content-Type': 'application/json',
+  const authHeaders = {
     'apikey': SB_KEY,
-    'Authorization': `Bearer ${SB_KEY}`,
-    'Prefer': 'return=minimal'
+    'Authorization': `Bearer ${SB_KEY}`
   };
 
-  // Schritt 1: Alle vorhandenen Tasks löschen
-  logArea.innerHTML += '<span class="info">🗑️ Lösche bestehende Aufgaben…</span>\n';
+  // Schritt 1: Alle vorhandenen Task-Keys laden (kein Limit – paginiert bis alles geladen)
+  let existingKeys = new Set();
   try {
-    const delResp = await fetch(`${SB_URL}/rest/v1/hausbau_tasks?sort_order=gte.0`, {
-      method: 'DELETE',
-      headers
-    });
-    if (!delResp.ok) {
-      const errText = await delResp.text();
-      logArea.innerHTML += `<span class="err">✗ Löschen fehlgeschlagen: ${errText.slice(0,200)}</span>\n`;
-      btn.disabled = false;
-      btn.textContent = '🔄 Nochmal versuchen';
-      return;
+    let offset = 0;
+    const PAGE = 1000;
+    while (true) {
+      const resp = await fetch(
+        `${SB_URL}/rest/v1/hausbau_tasks?select=section,floor,room,task_text&limit=${PAGE}&offset=${offset}`,
+        { headers: authHeaders }
+      );
+      if (!resp.ok) throw new Error(await resp.text());
+      const page = await resp.json();
+      page.forEach(r => existingKeys.add(`${r.section}|${r.floor}|${r.room}|${r.task_text}`));
+      if (page.length < PAGE) break;
+      offset += PAGE;
     }
-    logArea.innerHTML += '<span class="ok">✓ Tabelle geleert</span>\n';
+    logArea.innerHTML += `<span class="ok">✓ ${existingKeys.size} bestehende Aufgaben geladen</span>\n`;
   } catch(e) {
-    logArea.innerHTML += `<span class="err">✗ Netzwerkfehler beim Löschen: ${e.message}</span>\n`;
-    btn.disabled = false;
-    btn.textContent = '🔄 Nochmal versuchen';
+    logArea.innerHTML += `<span class="err">✗ Fehler beim Laden: ${e.message.slice(0,200)}</span>\n`;
+    btn.disabled = false; btn.textContent = '🔄 Nochmal versuchen';
     return;
   }
 
-  // Schritt 2: Neue Tasks in Batches einfügen
-  const BATCH = 50;
-  let uploaded = 0, errors = 0;
+  // Schritt 2: Nur echte Neueinträge filtern
+  const newTasks = MAPPED.filter(t =>
+    !existingKeys.has(`${t.section}|${t.floor}|${t.room}|${t.task_text}`)
+  );
+  const skipped = MAPPED.length - newTasks.length;
 
-  for (let i = 0; i < MAPPED.length; i += BATCH) {
-    const batch = MAPPED.slice(i, i + BATCH);
+  if (newTasks.length === 0) {
+    progFill.style.width = '100%';
+    logArea.innerHTML += `\n<span class="ok">✅ Alle ${MAPPED.length} Aufgaben bereits vorhanden – nichts zu tun.</span>\n`;
+    showAlert('✅ Datenbank bereits aktuell, keine neuen Aufgaben.', 'ok');
+    btn.disabled = false; btn.textContent = '🔄 Nochmal prüfen';
+    return;
+  }
+
+  logArea.innerHTML += `<span class="info">→ ${newTasks.length} neue Aufgaben werden eingefügt`;
+  if (skipped > 0) logArea.innerHTML += ` (${skipped} bereits vorhanden, werden übersprungen)`;
+  logArea.innerHTML += `</span>\n`;
+
+  // Schritt 3: Neue Tasks in Batches einfügen
+  const insertHeaders = { ...authHeaders, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };
+  const BATCH = 50;
+  let inserted = 0, errors = 0;
+
+  for (let i = 0; i < newTasks.length; i += BATCH) {
+    const batch = newTasks.slice(i, i + BATCH);
     try {
       const resp = await fetch(`${SB_URL}/rest/v1/hausbau_tasks`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(batch)
+        method: 'POST', headers: insertHeaders, body: JSON.stringify(batch)
       });
       if (!resp.ok) {
         const err = await resp.text();
         logArea.innerHTML += `<span class="err">✗ Batch ${Math.floor(i/BATCH)+1}: ${err.slice(0,200)}</span>\n`;
         errors += batch.length;
       } else {
-        uploaded += batch.length;
-        logArea.innerHTML += `<span class="ok">✓ ${uploaded}/${MAPPED.length} hochgeladen</span>\n`;
+        inserted += batch.length;
+        logArea.innerHTML += `<span class="ok">✓ ${inserted}/${newTasks.length} eingefügt</span>\n`;
       }
     } catch(e) {
       logArea.innerHTML += `<span class="err">✗ Netzwerkfehler: ${e.message}</span>\n`;
       errors += batch.length;
     }
-    progFill.style.width = (Math.min(i + BATCH, MAPPED.length) / MAPPED.length * 100) + '%';
-    logArea.scrollTop = logArea.scrollHeight;
+    progFill.style.width = (Math.min(i + BATCH, newTasks.length) / newTasks.length * 100) + '%';
+    logArea.scrollTop = logEl?.scrollHeight || 0;
   }
 
   progFill.style.width = '100%';
   if (errors === 0) {
-    logArea.innerHTML += `\n<span class="ok">✅ Fertig! ${uploaded} Aufgaben erfolgreich hochgeladen.</span>\n`;
-    showAlert(`✅ ${uploaded} Aufgaben in Supabase gespeichert!`, 'ok');
+    logArea.innerHTML += `\n<span class="ok">✅ Fertig! ${inserted} neue Aufgaben eingefügt. Bestehende Fortschritte unverändert.</span>\n`;
+    showAlert(`✅ ${inserted} neue Aufgaben hinzugefügt!`, 'ok');
   } else {
-    logArea.innerHTML += `\n<span class="err">⚠️ ${errors} Fehler, ${uploaded} erfolgreich.</span>\n`;
-    showAlert(`⚠️ Upload abgeschlossen mit ${errors} Fehlern.`, 'err');
+    logArea.innerHTML += `\n<span class="err">⚠️ ${errors} Fehler, ${inserted} erfolgreich eingefügt.</span>\n`;
+    showAlert(`⚠️ Upload mit ${errors} Fehlern abgeschlossen.`, 'err');
   }
 
   btn.disabled = false;
-  btn.textContent = '🔄 Nochmal hochladen';
+  btn.textContent = '🔄 Nochmal prüfen';
 }
 
 function showAlert(msg, type) {
