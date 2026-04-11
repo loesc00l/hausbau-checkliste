@@ -326,9 +326,9 @@
     <span class="nav-user" id="navUser"></span>
     <button class="nav-logout" onclick="hausbauLogout()">⎋ Abmelden</button>
   </nav>
-  </div>
   <div class="sub-nav" id="subNav"></div>
   <div class="sub-nav-l2" id="subNavRoom"></div>
+  </div>
 
   <main>
     <div class="kpi-grid" id="kpiGrid">
@@ -449,7 +449,7 @@
       const nav = document.getElementById('subNavRoom');
       if (!nav || !currentSection) { if(nav) nav.classList.remove('visible'); return; }
       const sectionRooms = ROOMS.filter(r=>r.etage===currentSection && r.flaeche>0);
-      if (sectionRooms.length <= 1) { nav.classList.remove('visible'); return; }
+      if (sectionRooms.length === 0) { nav.classList.remove('visible'); return; }
       nav.classList.add('visible');
       currentRoom = null; // reset when section changes
       let html = `<span class="sub-nav-breadcrumb">▸</span><span class="sub-nav-pill active" data-room="all" onclick="selectRoom(null)">Alle Räume <span class="pill-count">(${sectionRooms.length})</span></span>`;
