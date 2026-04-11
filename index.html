@@ -44,10 +44,10 @@ header h1{font-size:1.15rem;font-weight:700}
 .sub-nav-pill.active .pill-count{opacity:.7}
 
 /* ── Sub-Nav Level 2 & 3 ───────────────────────────────────────────── */
-.sub-nav-l2{background:#edf2f7;border-bottom:1px solid #e2e8f0;padding:6px 24px 6px 36px;display:none;align-items:center;gap:5px;flex-wrap:wrap}
+.sub-nav-l2{background:#edf2f7;border-bottom:1px solid #e2e8f0;padding:6px 24px 6px 24px;display:none;align-items:center;gap:5px;flex-wrap:wrap}
 .sub-nav-l2.visible{display:flex}
 .sub-nav-l2 .sub-nav-pill{font-size:.72rem;padding:4px 10px;color:#4a5568;border-color:#cbd5e0}
-.sub-nav-l3{background:#e2e8f0;border-bottom:1px solid #d5dde8;padding:5px 24px 5px 52px;display:none;align-items:center;gap:4px;flex-wrap:wrap}
+.sub-nav-l3{background:#e2e8f0;border-bottom:1px solid #d5dde8;padding:5px 24px;display:none;align-items:center;gap:4px;flex-wrap:wrap}
 .sub-nav-l3.visible{display:flex}
 .sub-nav-l3 .sub-nav-pill{font-size:.7rem;padding:3px 9px;color:#4a5568;border-color:#cbd5e0}
 .sub-nav-breadcrumb{font-size:.7rem;color:#a0aec0;margin-right:4px;user-select:none}
@@ -253,10 +253,10 @@ header h1{font-size:1.15rem;font-weight:700}
   <span class="nav-user" id="navUser"></span>
   <button class="nav-logout" onclick="hausbauLogout()">⎋ Abmelden</button>
 </nav>
-</div>
 <div class="sub-nav" id="subNavSec"></div>
 <div class="sub-nav-l2" id="subNavFloor"></div>
 <div class="sub-nav-l3" id="subNavRoom"></div>
+</div>
 
 <div class="modal-bg hidden" id="userModal">
   <div class="modal">
@@ -458,11 +458,12 @@ async function loadAll() {
     priority: r.priority||'Mittel', due_date: r.due_date||null
   }; });
 
-  // Tasks aufbauen
+  // Tasks aufbauen – Etage normalisieren (z.B. "EG_HH" → "EG")
   tasks = {};
   (tr || []).forEach(r => {
-    (tasks[r.section] ??= {})[r.floor] ??= {};
-    (tasks[r.section][r.floor][r.room] ??= []).push(r.task_text);
+    const floor = normalizeFloor(r.floor);
+    (tasks[r.section] ??= {})[floor] ??= {};
+    (tasks[r.section][floor][r.room] ??= []).push(r.task_text);
   });
   if ((tr || []).length === 0) {
     showError('Die Tabelle hausbau_tasks ist leer. Bitte python watch_excel.py --setup auf deinem PC ausführen, um die Aufgaben aus Excel hochzuladen.');
@@ -476,10 +477,10 @@ async function loadAll() {
     completedAt: r.completed_at||null
   }; });
 
-  // Custom tasks
+  // Custom tasks – Etage normalisieren (gleicher Key wie tasks-Objekt)
   custom = {};
   (ctr || []).forEach(r => {
-    const k = ckey(r.section, r.floor, r.room);
+    const k = ckey(r.section, normalizeFloor(r.floor), r.room);
     (custom[k] ??= []).push(r.task_text);
   });
 
@@ -515,7 +516,7 @@ function subscribe() {
     .on('postgres_changes', {event:'*', schema:'public', table:'hausbau_custom_tasks'}, p => {
       const row = p.new || p.old;
       if (!row) return;
-      const k = ckey(row.section, row.floor, row.room);
+      const k = ckey(row.section, normalizeFloor(row.floor), row.room);
       if (p.eventType === 'DELETE') {
         custom[k] = (custom[k] || []).filter(t => t !== row.task_text);
       } else {
@@ -715,7 +716,43 @@ function setFlt(f, btn) {
   rebuildUI();
 }
 
+// ── Excel-Struktur (Quelle der Wahrheit) ──────────────────────────────────
+// Bereich → Etage → Räume (exakt aus "Todos nach Raum")
+const STRUCTURE = {
+  'HH - Haupthaus': {
+    'EG': ['Bad','Büro','Flur','HAR','Haustechnikraum','Küche','Speisekammer','Treppenhaus','Wohnen / Essen'],
+    'OG': ['Ankleidezimmer','Bad','Flur','Gast','Gäste Ankleide','HWR','Kinderzimmer','Schlafzimmer (Eltern)','Treppenhaus'],
+    'DG': ['Dachboden']
+  },
+  'ELW - Einliegerwohnung': {
+    'EG': ['Ankleide','Bad','Esszimmer','Flur','Küche','Schlafzimmer','Terrasse','WC','Wohnen / Essen','Zocken'],
+    'DG': ['Dachboden']
+  },
+  'Drausen - Aussenbereich': {
+    'Außen': ['Terrasse Nord (Haupteingang)','Terrasse Süd (Gartenseite)'],
+    'EG':   ['Einfahrt','Garage','Garten','Grundstückstor','Pool','Werkstatt','Zaun'],
+    'DG':   ['Dachboden Garage']
+  }
+};
+
 // ── UI aufbauen ───────────────────────────────────────────────────────────
+// Floor normalisieren: "EG_HH", "Erdgeschoss", "EG" → alle "EG"
+function normalizeFloor(f) {
+  if (!f) return 'EG';
+  const s = f.toUpperCase();
+  // Kurz-Codes mit Suffix: EG_HH, OG_ELW, DG_HH …
+  if (s.startsWith('EG')) return 'EG';
+  if (s.startsWith('OG') || s.startsWith('1.OG') || s.startsWith('2.OG')) return 'OG';
+  if (s.startsWith('DG')) return 'DG';
+  // Deutsch ausgeschrieben
+  const l = f.toLowerCase();
+  if (l.includes('erdge'))  return 'EG';
+  if (l.includes('ober'))   return 'OG';
+  if (l.includes('dach'))   return 'DG';
+  if (l.includes('drausen') || l.includes('aussen') || l.includes('außen')) return 'Außen';
+  return f; // unbekannt → so lassen
+}
+
 // Feste Reihenfolge der Sektionen (verhindert doppelte/fehlende Einträge)
 const SEC_ORDER = ['HH - Haupthaus', 'ELW - Einliegerwohnung', 'Drausen - Aussenbereich'];
 const FLOOR_ORDER = ['EG','OG','DG','Außen'];
@@ -752,31 +789,45 @@ function buildSecNav() {
   nav.innerHTML = html;
 }
 
+// Zählt Tasks für Sektion+Etage+Raum (flexibel, null = alle)
+function countTasks(sec, floor, room) {
+  let n = 0;
+  for (const [k, fMap] of Object.entries(tasks)) {
+    if (!secMatches(k, sec)) continue;
+    const floorKeys = floor ? [floor] : Object.keys(fMap);
+    for (const fl of floorKeys) {
+      const rMap = fMap[fl] || {};
+      if (room) { n += (rMap[room] || []).length; }
+      else { for (const ts of Object.values(rMap)) n += ts.length; }
+    }
+  }
+  return n;
+}
+
 function buildFloorNav() {
   const nav = document.getElementById('subNavFloor');
   if (!nav) return;
-  if (!activeSec) { nav.classList.remove('visible'); return; }
-  const floors = new Map(); // floor → count
-  for (const [k, fMap] of Object.entries(tasks)) {
-    if (!secMatches(k, activeSec)) continue;
-    for (const [f, rMap] of Object.entries(fMap)) {
-      const n = Object.values(rMap).reduce((s,ts)=>s+ts.length,0);
-      floors.set(f, (floors.get(f)||0) + n);
+  // Etagen aus STRUCTURE (Quelle der Wahrheit), nur Etagen mit Daten anzeigen
+  const secs = activeSec ? [activeSec] : Object.keys(STRUCTURE);
+  const floorMap = new Map();
+  for (const sec of secs) {
+    for (const fl of Object.keys(STRUCTURE[sec] || {})) {
+      const n = countTasks(sec, fl, null);
+      if (n > 0) floorMap.set(fl, (floorMap.get(fl)||0) + n);
     }
   }
-  if (floors.size === 0) { nav.classList.remove('visible'); return; }
+  const total = [...floorMap.values()].reduce((s,n)=>s+n,0);
+  if (total === 0) { nav.classList.remove('visible'); return; }
   nav.classList.add('visible');
-  const sortedFloors = [...floors.entries()].sort((a,b)=>{
+  const sorted = [...floorMap.entries()].sort((a,b)=>{
     const ia=FLOOR_ORDER.indexOf(a[0]), ib=FLOOR_ORDER.indexOf(b[0]);
-    if(ia!==-1&&ib!==-1) return ia-ib;
-    return a[0].localeCompare(b[0]);
+    if(ia!==-1&&ib!==-1) return ia-ib; return a[0].localeCompare(b[0]);
   });
-  const totalFloor = [...floors.values()].reduce((s,n)=>s+n,0);
-  let html = `<span class="sub-nav-breadcrumb">▸</span><span class="sub-nav-pill${activeFloor===null?' active':''}" onclick="setFloor(null)">Alle Etagen <span class="pill-count">(${totalFloor})</span></span>`;
-  sortedFloors.forEach(([f,n])=>{
-    const active = activeFloor===f?' active':'';
-    const fSafe = f.replace(/'/g,"\\'");
-    html += `<span class="sub-nav-pill${active}" onclick="setFloor('${fSafe}')">${f} <span class="pill-count">(${n})</span></span>`;
+  let html = `<span class="sub-nav-pill${activeFloor===null?' active':''}" onclick="setFloor(null)">Alle Etagen <span class="pill-count">(${total})</span></span>`;
+  sorted.forEach(([f,n])=>{
+    const act = activeFloor===f?' active':'';
+    const fS = f.replace(/'/g,"\\'");
+    html += `<span class="sub-nav-pill${act}" onclick="setFloor('${fS}')">${f} <span class="pill-count">(${n})</span></span>`;
   });
   nav.innerHTML = html;
 }
@@ -784,24 +835,25 @@ function buildFloorNav() {
 function buildRoomNav() {
   const nav = document.getElementById('subNavRoom');
   if (!nav) return;
-  if (!activeSec || !activeFloor) { nav.classList.remove('visible'); return; }
-  const rooms = new Map(); // room → count
-  for (const [k, fMap] of Object.entries(tasks)) {
-    if (!secMatches(k, activeSec)) continue;
-    const rMap = fMap[activeFloor] || {};
-    for (const [r, ts] of Object.entries(rMap)) {
-      rooms.set(r, (rooms.get(r)||0) + ts.length);
+  if (!activeFloor) { nav.classList.remove('visible'); return; }
+  // Räume aus STRUCTURE, nur Räume mit Daten anzeigen
+  const secs = activeSec ? [activeSec] : Object.keys(STRUCTURE);
+  const roomMap = new Map();
+  for (const sec of secs) {
+    for (const r of (STRUCTURE[sec]?.[activeFloor] || [])) {
+      const n = countTasks(sec, activeFloor, r);
+      if (n > 0) roomMap.set(r, (roomMap.get(r)||0) + n);
     }
   }
-  if (rooms.size === 0) { nav.classList.remove('visible'); return; }
+  const total = [...roomMap.values()].reduce((s,n)=>s+n,0);
+  if (total === 0) { nav.classList.remove('visible'); return; }
   nav.classList.add('visible');
-  const sortedRooms = [...rooms.entries()].sort((a,b)=>a[0].localeCompare(b[0],'de'));
-  const totalRoom = [...rooms.values()].reduce((s,n)=>s+n,0);
-  let html = `<span class="sub-nav-breadcrumb">▸▸</span><span class="sub-nav-pill${activeRoom===null?' active':''}" onclick="setRoom(null)">Alle Räume <span class="pill-count">(${totalRoom})</span></span>`;
-  sortedRooms.forEach(([r,n])=>{
-    const active = activeRoom===r?' active':'';
-    const rSafe = r.replace(/'/g,"\\'");
-    html += `<span class="sub-nav-pill${active}" onclick="setRoom('${rSafe}')">${r} <span class="pill-count">(${n})</span></span>`;
+  const sorted = [...roomMap.entries()].sort((a,b)=>a[0].localeCompare(b[0],'de'));
+  let html = `<span class="sub-nav-pill${activeRoom===null?' active':''}" onclick="setRoom(null)">Alle Räume <span class="pill-count">(${total})</span></span>`;
+  sorted.forEach(([r,n])=>{
+    const act = activeRoom===r?' active':'';
+    const rS = r.replace(/'/g,"\\'");
+    html += `<span class="sub-nav-pill${act}" onclick="setRoom('${rS}')">${r} <span class="pill-count">(${n})</span></span>`;
   });
   nav.innerHTML = html;
 }
@@ -820,13 +872,16 @@ function setRoom(r) {
 }
 
 // Prüft ob ein DB-Section-Key zur angezeigten Sektion gehört
-// Unterstützt sowohl Kurzcodes (EG_HH, OG_HH…) als auch volle Namen
+// ELW und Drausen explizit; alles andere → HH (catch-all)
+function isELW(k)     { return k.includes('ELW') || k.includes('EINLIEGER'); }
+function isDrausen(k) { return k.includes('DRAUSEN') || k.includes('AUSSEN') || k.includes('AUßEN'); }
+
 function secMatches(dbKey, displaySec) {
   if (dbKey === displaySec) return true;
   const k = dbKey.toUpperCase();
-  if (displaySec === 'HH - Haupthaus')          return k.includes('_HH') || k === 'HH';
-  if (displaySec === 'ELW - Einliegerwohnung')   return k.includes('_ELW') || k.includes('ELW');
-  if (displaySec === 'Drausen - Aussenbereich')  return k.includes('DRAUSEN') || k.includes('AUSSEN') || k.includes('AUSSEN');
+  if (displaySec === 'ELW - Einliegerwohnung')  return isELW(k);
+  if (displaySec === 'Drausen - Aussenbereich') return isDrausen(k);
+  if (displaySec === 'HH - Haupthaus')          return !isELW(k) && !isDrausen(k);
   return false;
 }
 
