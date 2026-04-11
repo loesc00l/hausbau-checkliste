@@ -43,6 +43,15 @@ header h1{font-size:1.15rem;font-weight:700}
 .sub-nav-pill .pill-count{font-size:.65rem;opacity:.8;margin-left:2px}
 .sub-nav-pill.active .pill-count{opacity:.7}
 
+/* ── Sub-Nav Level 2 & 3 ───────────────────────────────────────────── */
+.sub-nav-l2{background:#edf2f7;border-bottom:1px solid #e2e8f0;padding:6px 24px 6px 36px;display:none;align-items:center;gap:5px;flex-wrap:wrap}
+.sub-nav-l2.visible{display:flex}
+.sub-nav-l2 .sub-nav-pill{font-size:.72rem;padding:4px 10px;color:#4a5568;border-color:#cbd5e0}
+.sub-nav-l3{background:#e2e8f0;border-bottom:1px solid #d5dde8;padding:5px 24px 5px 52px;display:none;align-items:center;gap:4px;flex-wrap:wrap}
+.sub-nav-l3.visible{display:flex}
+.sub-nav-l3 .sub-nav-pill{font-size:.7rem;padding:3px 9px;color:#4a5568;border-color:#cbd5e0}
+.sub-nav-breadcrumb{font-size:.7rem;color:#a0aec0;margin-right:4px;user-select:none}
+
 /* ── Header Extras ───────────────────────────────────────────────── */
 .hdr-sub{font-size:.78rem;opacity:.7;margin-top:2px}
 .hdr-right{margin-left:auto;display:flex;align-items:center;gap:14px}
@@ -245,7 +254,9 @@ header h1{font-size:1.15rem;font-weight:700}
   <button class="nav-logout" onclick="hausbauLogout()">⎋ Abmelden</button>
 </nav>
 </div>
-<div class="sub-nav" id="subNav"></div>
+<div class="sub-nav" id="subNavSec"></div>
+<div class="sub-nav-l2" id="subNavFloor"></div>
+<div class="sub-nav-l3" id="subNavRoom"></div>
 
 <div class="modal-bg hidden" id="userModal">
   <div class="modal">
@@ -345,6 +356,8 @@ let me      = null;
 let flt     = 'all';
 let srch    = '';
 let activeSec = null;
+let activeFloor = null;
+let activeRoom  = null;
 let _detKey = null;
 let _detAss = '';
 
@@ -470,7 +483,7 @@ async function loadAll() {
     (custom[k] ??= []).push(r.task_text);
   });
 
-  buildSubNav();
+  buildAllNavs();
   rebuildUI();
   } catch(e) {
     showError('Unerwarteter Fehler: ' + e.message);
@@ -705,37 +718,105 @@ function setFlt(f, btn) {
 // ── UI aufbauen ───────────────────────────────────────────────────────────
 // Feste Reihenfolge der Sektionen (verhindert doppelte/fehlende Einträge)
 const SEC_ORDER = ['HH - Haupthaus', 'ELW - Einliegerwohnung', 'Drausen - Aussenbereich'];
+const FLOOR_ORDER = ['EG','OG','DG','Außen'];
 
-function buildSubNav() {
-  const nav = document.getElementById('subNav');
-  if (!nav) return;
+function buildAllNavs() {
+  buildSecNav();
+  buildFloorNav();
+  buildRoomNav();
+}
 
-  // Aufgaben zählen – alle DB-Schlüssel die zur Sektion gehören summieren
-  function countTasks(sec) {
-    let n = 0;
-    for (const [k, floors] of Object.entries(tasks)) {
-      if (!secMatches(k, sec)) continue;
-      for (const rooms of Object.values(floors))
-        for (const ts of Object.values(rooms)) n += ts.length;
-    }
-    return n;
+function countInSec(sec) {
+  let n = 0;
+  for (const [k, floors] of Object.entries(tasks)) {
+    if (!secMatches(k, sec)) continue;
+    for (const rooms of Object.values(floors))
+      for (const ts of Object.values(rooms)) n += ts.length;
   }
+  return n;
+}
 
-  const total = Object.values(tasks)
-    .flatMap(f => Object.values(f))
-    .flatMap(r => Object.values(r))
-    .reduce((s, ts) => s + ts.length, 0);
-
+function buildSecNav() {
+  const nav = document.getElementById('subNavSec');
+  if (!nav) return;
+  const total = Object.values(tasks).flatMap(f=>Object.values(f)).flatMap(r=>Object.values(r)).reduce((s,ts)=>s+ts.length,0);
   let html = `<span class="sub-nav-pill${activeSec===null?' active':''}" onclick="setSec(null)">Alle <span class="pill-count">(${total})</span></span>`;
   SEC_ORDER.forEach(s => {
-    const n = countTasks(s);
-    if (n === 0) return; // Sektion ohne Daten ausblenden
+    const n = countInSec(s);
+    if (n === 0) return;
     const m = META[s] || {icon:'🏠'};
     const active = activeSec === s ? ' active' : '';
     const sSafe = s.replace(/'/g,"\\'");
     html += `<span class="sub-nav-pill${active}" onclick="setSec('${sSafe}')">${m.icon} ${s} <span class="pill-count">(${n})</span></span>`;
   });
   nav.innerHTML = html;
+}
+
+function buildFloorNav() {
+  const nav = document.getElementById('subNavFloor');
+  if (!nav) return;
+  if (!activeSec) { nav.classList.remove('visible'); return; }
+  const floors = new Map(); // floor → count
+  for (const [k, fMap] of Object.entries(tasks)) {
+    if (!secMatches(k, activeSec)) continue;
+    for (const [f, rMap] of Object.entries(fMap)) {
+      const n = Object.values(rMap).reduce((s,ts)=>s+ts.length,0);
+      floors.set(f, (floors.get(f)||0) + n);
+    }
+  }
+  if (floors.size === 0) { nav.classList.remove('visible'); return; }
+  nav.classList.add('visible');
+  const sortedFloors = [...floors.entries()].sort((a,b)=>{
+    const ia=FLOOR_ORDER.indexOf(a[0]), ib=FLOOR_ORDER.indexOf(b[0]);
+    if(ia!==-1&&ib!==-1) return ia-ib;
+    return a[0].localeCompare(b[0]);
+  });
+  const totalFloor = [...floors.values()].reduce((s,n)=>s+n,0);
+  let html = `<span class="sub-nav-breadcrumb">▸</span><span class="sub-nav-pill${activeFloor===null?' active':''}" onclick="setFloor(null)">Alle Etagen <span class="pill-count">(${totalFloor})</span></span>`;
+  sortedFloors.forEach(([f,n])=>{
+    const active = activeFloor===f?' active':'';
+    const fSafe = f.replace(/'/g,"\\'");
+    html += `<span class="sub-nav-pill${active}" onclick="setFloor('${fSafe}')">${f} <span class="pill-count">(${n})</span></span>`;
+  });
+  nav.innerHTML = html;
+}
+
+function buildRoomNav() {
+  const nav = document.getElementById('subNavRoom');
+  if (!nav) return;
+  if (!activeSec || !activeFloor) { nav.classList.remove('visible'); return; }
+  const rooms = new Map(); // room → count
+  for (const [k, fMap] of Object.entries(tasks)) {
+    if (!secMatches(k, activeSec)) continue;
+    const rMap = fMap[activeFloor] || {};
+    for (const [r, ts] of Object.entries(rMap)) {
+      rooms.set(r, (rooms.get(r)||0) + ts.length);
+    }
+  }
+  if (rooms.size === 0) { nav.classList.remove('visible'); return; }
+  nav.classList.add('visible');
+  const sortedRooms = [...rooms.entries()].sort((a,b)=>a[0].localeCompare(b[0],'de'));
+  const totalRoom = [...rooms.values()].reduce((s,n)=>s+n,0);
+  let html = `<span class="sub-nav-breadcrumb">▸▸</span><span class="sub-nav-pill${activeRoom===null?' active':''}" onclick="setRoom(null)">Alle Räume <span class="pill-count">(${totalRoom})</span></span>`;
+  sortedRooms.forEach(([r,n])=>{
+    const active = activeRoom===r?' active':'';
+    const rSafe = r.replace(/'/g,"\\'");
+    html += `<span class="sub-nav-pill${active}" onclick="setRoom('${rSafe}')">${r} <span class="pill-count">(${n})</span></span>`;
+  });
+  nav.innerHTML = html;
+}
+
+function setSec(s) {
+  activeSec = s; activeFloor = null; activeRoom = null;
+  buildAllNavs(); rebuildUI();
+}
+function setFloor(f) {
+  activeFloor = f; activeRoom = null;
+  buildAllNavs(); rebuildUI();
+}
+function setRoom(r) {
+  activeRoom = r;
+  buildAllNavs(); rebuildUI();
 }
 
 // Prüft ob ein DB-Section-Key zur angezeigten Sektion gehört
@@ -747,12 +828,6 @@ function secMatches(dbKey, displaySec) {
   if (displaySec === 'ELW - Einliegerwohnung')   return k.includes('_ELW') || k.includes('ELW');
   if (displaySec === 'Drausen - Aussenbereich')  return k.includes('DRAUSEN') || k.includes('AUSSEN') || k.includes('AUSSEN');
   return false;
-}
-
-function setSec(s) {
-  activeSec = s;
-  buildSubNav();
-  rebuildUI();
 }
 
 function rebuildUI() {
@@ -768,9 +843,11 @@ function rebuildUI() {
       <span class="sec-ttl">${displayName}</span></div>`;
 
     for (const [f, rooms] of Object.entries(floors)) {
+      if (activeFloor !== null && f !== activeFloor) continue;
       const fid = slug(s+f);
       html += `<div class="floor-lbl" id="fl_${fid}">${f}</div><div class="grid">`;
       for (const [r, ts] of Object.entries(rooms)) {
+        if (activeRoom !== null && r !== activeRoom) continue;
         html += roomCard(s,f,r,ts);
       }
       html += '</div>';
