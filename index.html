@@ -142,6 +142,18 @@ header h1{font-size:1.15rem;font-weight:700}
 .lv-who{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;
   justify-content:center;font-size:.5rem;font-weight:700;color:#fff;flex-shrink:0}
 .lv-count{font-size:.72rem;color:#a0aec0;margin-top:6px;padding:3px 0}
+.lv-grp-bar{display:none;align-items:center;gap:6px;margin-bottom:10px;
+  font-size:.72rem;color:#718096}
+.lv-grp-bar.visible{display:flex}
+.lv-grp-bar span{font-weight:600}
+.gtb{padding:4px 10px;border:1px solid #e2e8f0;border-radius:7px;font-size:.72rem;
+  cursor:pointer;background:#fff;color:#718096;transition:all .15s}
+.gtb.on{background:#2c5282;color:#fff;border-color:#2c5282}
+.lv-prio-hdr-hoch{border-bottom-color:#e53e3e!important;color:#e53e3e!important}
+.lv-prio-hdr-mittel{border-bottom-color:#d69e2e!important;color:#d69e2e!important}
+.lv-prio-hdr-niedrig{border-bottom-color:#276749!important;color:#276749!important}
+.lv-room-tag{font-size:.68rem;background:#ebf8ff;color:#2b6cb0;border-radius:8px;
+  padding:1px 7px;font-weight:600;white-space:nowrap}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);
   display:flex;align-items:center;justify-content:center;z-index:500}
 .modal-bg.hidden{display:none}
@@ -372,6 +384,12 @@ header h1{font-size:1.15rem;font-weight:700}
       <button class="vtb"    id="vbList"  onclick="setView('list',this)"  title="Listenansicht">☰</button>
     </div>
   </div>
+  <div class="lv-grp-bar" id="grpBar">
+    <span>Gruppierung:</span>
+    <button class="gtb on" id="gtbRaum"    onclick="setGroup('raum',this)"   >📍 Nach Räumen</button>
+    <button class="gtb"    id="gtbPrio"    onclick="setGroup('prio',this)"    >⚡ Nach Priorität</button>
+    <button class="gtb"    id="gtbAufgabe" onclick="setGroup('aufgabe',this)" >📋 Nach Aufgaben</button>
+  </div>
   <div id="content"><div class="loading">⏳ Aufgaben werden geladen…</div></div>
 </main>
 
@@ -393,7 +411,8 @@ let details = {};  // task_key → {description, status, priority, due_date}
 let me      = null;
 let flt     = 'all';
 let srch    = '';
-let viewMode = 'cards'; // 'cards' | 'list'
+let viewMode  = 'cards'; // 'cards' | 'list'
+let groupMode = 'raum';  // 'raum' | 'aufgabe'
 let activeSec = null;
 let activeFloor = null;
 let activeRoom  = null;
@@ -957,6 +976,15 @@ function setView(mode, btn) {
   viewMode = mode;
   document.querySelectorAll('.vtb').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
+  const bar = document.getElementById('grpBar');
+  if (bar) bar.classList.toggle('visible', mode === 'list');
+  rebuildUI();
+}
+
+function setGroup(mode, btn) {
+  groupMode = mode;
+  document.querySelectorAll('.gtb').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
   rebuildUI();
 }
 
@@ -997,64 +1025,150 @@ function rebuildListView() {
     globalProgress(); return;
   }
 
-  // Nach Bereich + Etage + Raum gruppieren
-  const groups = new Map();
-  for (const row of rows) {
-    const gk = row.s + '||' + row.f;
-    if (!groups.has(gk)) groups.set(gk, {s:row.s, f:row.f, displaySec:row.displaySec, m:row.m, rows:[]});
-    groups.get(gk).rows.push(row);
+  const esc = v => String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const eS  = v => JSON.stringify(v).replace(/"/g,'&quot;');
+
+  // ── Zeile rendern (gemeinsamer Helfer) ───────────────────────────────────
+  function lvRow(row, showRoom) {
+    const chkCls = row.chk ? 'checked' : '';
+    const rowCls = row.chk ? 'done-row' : '';
+    const u   = row.chk ? userById(checks[row.k]?.by||'') : null;
+    const aU  = userById(row.ass);
+    const prioCls  = (row.priority||'').toLowerCase();
+    const prioHtml = row.priority && row.priority !== 'Mittel'
+      ? `<span class="lv-prio ${prioCls}">${esc(row.priority)}</span>` : '';
+    const roomHtml = showRoom
+      ? `<span class="lv-room-tag">📍 ${esc(row.r)}</span><span class="lv-floor">${esc(row.f)}</span>` : '';
+    const whoHtml  = u  ? `<span class="lv-who" style="background:${u.color}" title="${esc(u.name)}">${u.initials}</span>` : '';
+    const assHtml  = aU ? `<span class="lv-who" style="background:${aU.color};opacity:.6" title="Zugewiesen: ${esc(aU.name)}">${aU.initials}</span>` : '';
+    return `<div class="lv-row ${rowCls}" onclick="openDetail(${eS(row.s)},${eS(row.f)},${eS(row.r)},${eS(row.t)})">
+      <div class="lv-chk ${chkCls}" onclick="event.stopPropagation();toggle(${eS(row.s)},${eS(row.f)},${eS(row.r)},${eS(row.t)})">${row.chk?'✓':''}</div>
+      <div class="lv-body">
+        <div class="lv-task">${esc(row.t)}</div>
+        <div class="lv-meta">${prioHtml}${roomHtml}${whoHtml}${assHtml}</div>
+      </div>
+    </div>`;
   }
 
   let html = '';
-  const esc = v => String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const total = rows.length, done2 = rows.filter(r=>r.chk).length;
+  html += `<div class="lv-count" style="margin-bottom:12px;font-size:.76rem;color:#718096">
+    ${total} Aufgaben · ${done2} erledigt · ${total-done2} offen</div>`;
 
-  for (const [, g] of groups) {
-    const done = g.rows.filter(r=>r.chk).length;
-    const pct  = Math.round(done/g.rows.length*100);
-    html += `<div class="lv-group">
-      <div class="lv-group-hdr">
-        <span class="ico">${g.m.icon}</span>
-        <span>${esc(g.displaySec)}</span>
-        <span style="color:#a0aec0;font-weight:400;margin-left:4px">· ${esc(g.f)}</span>
-        <span class="badge">${done}/${g.rows.length} · ${pct}%</span>
-      </div>`;
-
-    // Räume innerhalb der Gruppe als Unterabschnitte
-    const byRoom = new Map();
-    for (const row of g.rows) {
-      if (!byRoom.has(row.r)) byRoom.set(row.r, []);
-      byRoom.get(row.r).push(row);
+  if (groupMode === 'raum') {
+    // ── Modus: Nach Räumen (Bereich + Etage → Raum → Aufgaben) ─────────────
+    const groups = new Map();
+    for (const row of rows) {
+      const gk = row.s + '||' + row.f;
+      if (!groups.has(gk)) groups.set(gk, {s:row.s, f:row.f, displaySec:row.displaySec, m:row.m, rows:[]});
+      groups.get(gk).rows.push(row);
+    }
+    for (const [, g] of groups) {
+      const done = g.rows.filter(r=>r.chk).length;
+      const pct  = Math.round(done/g.rows.length*100);
+      html += `<div class="lv-group">
+        <div class="lv-group-hdr">
+          <span class="ico">${g.m.icon}</span>
+          <span>${esc(g.displaySec)}</span>
+          <span style="color:#a0aec0;font-weight:400;margin-left:4px">· ${esc(g.f)}</span>
+          <span class="badge">${done}/${g.rows.length} · ${pct}%</span>
+        </div>`;
+      const byRoom = new Map();
+      for (const row of g.rows) {
+        if (!byRoom.has(row.r)) byRoom.set(row.r, []);
+        byRoom.get(row.r).push(row);
+      }
+      for (const [room, rrows] of byRoom) {
+        const rdone = rrows.filter(r=>r.chk).length;
+        html += `<div class="lv-count">📍 ${esc(room)} <span style="color:#a0aec0">(${rdone}/${rrows.length})</span></div>`;
+        for (const row of rrows) html += lvRow(row, false);
+      }
+      html += '</div>';
     }
 
-    for (const [room, rrows] of byRoom) {
-      const rdone = rrows.filter(r=>r.chk).length;
-      html += `<div class="lv-count">📍 ${esc(room)} <span style="color:#a0aec0">(${rdone}/${rrows.length})</span></div>`;
-      for (const row of rrows) {
+  } else if (groupMode === 'prio') {
+    // ── Modus: Nach Priorität (Hoch → Mittel → Niedrig → ohne; Raum als Badge) ──
+    const PRIO_ORDER = ['Hoch','Mittel','Niedrig'];
+    const PRIO_META  = {
+      'Hoch':    {ico:'🔴', cls:'lv-prio-hdr-hoch',    label:'Hoch – dringlich'},
+      'Mittel':  {ico:'🟡', cls:'lv-prio-hdr-mittel',  label:'Mittel'},
+      'Niedrig': {ico:'🟢', cls:'lv-prio-hdr-niedrig', label:'Niedrig'},
+      '__':      {ico:'⚪', cls:'',                     label:'Ohne Priorität'},
+    };
+    const byPrio = new Map();
+    for (const row of rows) {
+      const pk = PRIO_ORDER.includes(row.priority) ? row.priority : '__';
+      if (!byPrio.has(pk)) byPrio.set(pk, []);
+      byPrio.get(pk).push(row);
+    }
+    const orderedKeys = [...PRIO_ORDER, '__'].filter(k => byPrio.has(k));
+    for (const pk of orderedKeys) {
+      const prows = byPrio.get(pk);
+      const pm    = PRIO_META[pk];
+      const pdone = prows.filter(r=>r.chk).length;
+      const ppct  = Math.round(pdone/prows.length*100);
+      html += `<div class="lv-group">
+        <div class="lv-group-hdr ${pm.cls}">
+          <span class="ico">${pm.ico}</span>
+          <span>${pm.label}</span>
+          <span class="badge">${pdone}/${prows.length} · ${ppct}%</span>
+        </div>`;
+      prows.sort((a,b) => a.t.localeCompare(b.t,'de'));
+      for (const row of prows) html += lvRow(row, true);
+      html += '</div>';
+    }
+
+  } else {
+    // ── Modus: Nach Aufgaben (gleiche Aufgabe aus mehreren Räumen gebündelt) ──
+    // Gleichnamige Aufgaben werden zusammengefasst; Raum/Etage als Kontext je Zeile
+    const byTask = new Map();
+    for (const row of rows) {
+      if (!byTask.has(row.t)) byTask.set(row.t, []);
+      byTask.get(row.t).push(row);
+    }
+    // Alphabetisch nach Aufgabentext sortieren
+    const sortedTasks = [...byTask.keys()].sort((a,b) => a.localeCompare(b,'de'));
+    for (const taskText of sortedTasks) {
+      const trows = byTask.get(taskText);
+      const tdone = trows.filter(r=>r.chk).length;
+      const tpct  = Math.round(tdone/trows.length*100);
+      // Priorität der Gruppe = höchste Priorität der Einträge
+      const PRIO_RANK = {Hoch:0, Mittel:1, Niedrig:2};
+      const topPrio   = trows.map(r=>r.priority||'Mittel')
+                             .sort((a,b)=>(PRIO_RANK[a]??1)-(PRIO_RANK[b]??1))[0];
+      const prioCls   = topPrio === 'Hoch' ? 'lv-prio-hdr-hoch' :
+                        topPrio === 'Niedrig' ? 'lv-prio-hdr-niedrig' : '';
+      html += `<div class="lv-group">
+        <div class="lv-group-hdr ${prioCls}">
+          <span class="ico">📋</span>
+          <span>${esc(taskText)}</span>
+          <span class="badge">${tdone}/${trows.length}${trows.length > 1 ? ' · '+trows.length+' Räume' : ''}</span>
+        </div>`;
+      // Jede Zeile zeigt Raum + Etage als Kontext (kein Aufgabentext nötig → kompakt)
+      for (const row of trows) {
         const chkCls = row.chk ? 'checked' : '';
         const rowCls = row.chk ? 'done-row' : '';
-        const u = row.chk ? userById(checks[row.k]?.by||'') : null;
-        const aU = userById(row.ass);
-        const prioCls = (row.priority||'').toLowerCase();
-        const prioHtml = row.priority && row.priority !== 'Mittel'
-          ? `<span class="lv-prio ${prioCls}">${esc(row.priority)}</span>` : '';
-        const whoHtml = u ? `<span class="lv-who" style="background:${u.color}" title="${esc(u.name)}">${u.initials}</span>` : '';
+        const u   = row.chk ? userById(checks[row.k]?.by||'') : null;
+        const aU  = userById(row.ass);
+        const whoHtml = u  ? `<span class="lv-who" style="background:${u.color}" title="${esc(u.name)}">${u.initials}</span>` : '';
         const assHtml = aU ? `<span class="lv-who" style="background:${aU.color};opacity:.6" title="Zugewiesen: ${esc(aU.name)}">${aU.initials}</span>` : '';
-        const eS = v => JSON.stringify(v).replace(/"/g,'&quot;');
+        const prioCls2 = (row.priority||'').toLowerCase();
+        const prioHtml = row.priority && row.priority !== 'Mittel'
+          ? `<span class="lv-prio ${prioCls2}">${esc(row.priority)}</span>` : '';
         html += `<div class="lv-row ${rowCls}" onclick="openDetail(${eS(row.s)},${eS(row.f)},${eS(row.r)},${eS(row.t)})">
           <div class="lv-chk ${chkCls}" onclick="event.stopPropagation();toggle(${eS(row.s)},${eS(row.f)},${eS(row.r)},${eS(row.t)})">${row.chk?'✓':''}</div>
           <div class="lv-body">
-            <div class="lv-task">${esc(row.t)}</div>
-            <div class="lv-meta">${prioHtml}${whoHtml}${assHtml}</div>
+            <div class="lv-meta" style="margin-top:0">
+              <span class="lv-room-tag">📍 ${esc(row.r)}</span>
+              <span class="lv-floor">${esc(row.f)}</span>
+              ${prioHtml}${whoHtml}${assHtml}
+            </div>
           </div>
         </div>`;
       }
+      html += '</div>';
     }
-    html += '</div>';
   }
-
-  const total = rows.length, done2 = rows.filter(r=>r.chk).length;
-  html = `<div class="lv-count" style="margin-bottom:12px;font-size:.76rem;color:#718096">
-    ${total} Aufgaben · ${done2} erledigt · ${total-done2} offen</div>` + html;
 
   document.getElementById('content').innerHTML = html;
   globalProgress();
