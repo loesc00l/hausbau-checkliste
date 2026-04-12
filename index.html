@@ -108,6 +108,40 @@ header h1{font-size:1.15rem;font-weight:700}
 .srch:focus{border-color:#3182ce}
 .flt{padding:6px 13px;border:1px solid #e2e8f0;border-radius:8px;font-size:.78rem;cursor:pointer;background:#fff}
 .flt.on{background:#2c5282;color:#fff;border-color:#2c5282}
+.view-tog{margin-left:auto;display:flex;gap:4px}
+.vtb{padding:6px 11px;border:1px solid #e2e8f0;border-radius:8px;font-size:.78rem;cursor:pointer;background:#fff;color:#718096}
+.vtb.on{background:#2c5282;color:#fff;border-color:#2c5282}
+/* ── Listenansicht ── */
+.lv-group{margin-bottom:22px}
+.lv-group-hdr{display:flex;align-items:center;gap:8px;padding:6px 0;margin-bottom:6px;
+  border-bottom:2px solid #e2e8f0;font-size:.72rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.8px;color:#718096}
+.lv-group-hdr .ico{font-size:1rem}
+.lv-group-hdr .badge{background:#2c5282;color:#fff;border-radius:10px;padding:1px 7px;
+  font-size:.65rem;font-weight:700;margin-left:auto}
+.lv-row{display:flex;align-items:flex-start;gap:10px;padding:8px 6px;
+  border-bottom:1px solid #f0f4f8;transition:background .1s;cursor:pointer}
+.lv-row:last-child{border-bottom:none}
+.lv-row:hover{background:#f7fafc}
+.lv-row.done-row{opacity:.55}
+.lv-chk{width:17px;height:17px;border-radius:4px;border:2px solid #cbd5e0;
+  flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;
+  font-size:.65rem;cursor:pointer;transition:all .15s}
+.lv-chk.checked{background:#22c55e;border-color:#22c55e;color:#fff}
+.lv-body{flex:1;min-width:0}
+.lv-task{font-size:.82rem;line-height:1.35;color:#2d3748}
+.lv-row.done-row .lv-task{text-decoration:line-through;color:#a0aec0}
+.lv-meta{display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap}
+.lv-room{font-size:.68rem;background:#ebf8ff;color:#2b6cb0;border-radius:8px;
+  padding:1px 7px;font-weight:600}
+.lv-floor{font-size:.67rem;color:#a0aec0}
+.lv-prio{font-size:.63rem;padding:1px 6px;border-radius:8px;font-weight:700}
+.lv-prio.hoch{background:rgba(239,68,68,.12);color:#e53e3e}
+.lv-prio.mittel{background:rgba(245,158,11,.12);color:#d69e2e}
+.lv-prio.niedrig{background:rgba(34,197,94,.12);color:#276749}
+.lv-who{width:16px;height:16px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:.5rem;font-weight:700;color:#fff;flex-shrink:0}
+.lv-count{font-size:.72rem;color:#a0aec0;margin-top:6px;padding:3px 0}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);
   display:flex;align-items:center;justify-content:center;z-index:500}
 .modal-bg.hidden{display:none}
@@ -333,6 +367,10 @@ header h1{font-size:1.15rem;font-weight:700}
     <button class="flt"     onclick="setFlt('open',this)">Offen</button>
     <button class="flt"     onclick="setFlt('done',this)">Erledigt</button>
     <button class="flt"     onclick="setFlt('mine',this)" id="mineBtn">👤 Meine</button>
+    <div class="view-tog">
+      <button class="vtb on" id="vbCards" onclick="setView('cards',this)" title="Kartenansicht">⊞</button>
+      <button class="vtb"    id="vbList"  onclick="setView('list',this)"  title="Listenansicht">☰</button>
+    </div>
   </div>
   <div id="content"><div class="loading">⏳ Aufgaben werden geladen…</div></div>
 </main>
@@ -355,6 +393,7 @@ let details = {};  // task_key → {description, status, priority, due_date}
 let me      = null;
 let flt     = 'all';
 let srch    = '';
+let viewMode = 'cards'; // 'cards' | 'list'
 let activeSec = null;
 let activeFloor = null;
 let activeRoom  = null;
@@ -887,8 +926,9 @@ function secMatches(dbKey, displaySec) {
 
 function rebuildUI() {
   if (!Object.keys(tasks).length) return;
-  let html = '';
+  if (viewMode === 'list') { rebuildListView(); return; }
 
+  let html = '';
   for (const [s, floors] of Object.entries(tasks)) {
     if (activeSec !== null && !secMatches(s, activeSec)) continue;
     const m = META[s] || META[SEC_ORDER.find(sec => secMatches(s, sec))] || {icon:'🏠', color:'#2c5282'};
@@ -908,6 +948,114 @@ function rebuildUI() {
       html += '</div>';
     }
   }
+  document.getElementById('content').innerHTML = html;
+  globalProgress();
+}
+
+// ── Ansicht wechseln ──────────────────────────────────────────────────────
+function setView(mode, btn) {
+  viewMode = mode;
+  document.querySelectorAll('.vtb').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  rebuildUI();
+}
+
+// ── Listenansicht ─────────────────────────────────────────────────────────
+function rebuildListView() {
+  if (!Object.keys(tasks).length) return;
+
+  // Alle sichtbaren Aufgaben als flache Liste sammeln
+  const rows = [];
+  for (const [s, floors] of Object.entries(tasks)) {
+    if (activeSec !== null && !secMatches(s, activeSec)) continue;
+    const displaySec = SEC_ORDER.find(sec => secMatches(s, sec)) || s;
+    const m = META[s] || META[displaySec] || {icon:'🏠', color:'#2c5282'};
+    for (const [f, rooms] of Object.entries(floors)) {
+      if (activeFloor !== null && f !== activeFloor) continue;
+      for (const [r, base] of Object.entries(rooms)) {
+        if (activeRoom !== null && r !== activeRoom) continue;
+        const all = [...base, ...(custom[ckey(s,f,r)] || [])];
+        for (const t of all) {
+          if (srch && !t.toLowerCase().includes(srch)) continue;
+          const k   = tkey(s,f,r,t);
+          const chk = checks[k]?.checked || false;
+          const ass = checks[k]?.ass || '';
+          if (flt === 'done' && !chk) continue;
+          if (flt === 'open' &&  chk) continue;
+          if (flt === 'mine' && ass !== (me?.id||'__')) continue;
+          const det = details[k] || {};
+          rows.push({s, f, r, t, k, chk, ass, displaySec, m,
+            status: det.status||'Offen', priority: det.priority||'Mittel'});
+        }
+      }
+    }
+  }
+
+  if (rows.length === 0) {
+    document.getElementById('content').innerHTML =
+      '<div class="loading" style="color:#a0aec0">Keine Aufgaben gefunden.</div>';
+    globalProgress(); return;
+  }
+
+  // Nach Bereich + Etage + Raum gruppieren
+  const groups = new Map();
+  for (const row of rows) {
+    const gk = row.s + '||' + row.f;
+    if (!groups.has(gk)) groups.set(gk, {s:row.s, f:row.f, displaySec:row.displaySec, m:row.m, rows:[]});
+    groups.get(gk).rows.push(row);
+  }
+
+  let html = '';
+  const esc = v => String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  for (const [, g] of groups) {
+    const done = g.rows.filter(r=>r.chk).length;
+    const pct  = Math.round(done/g.rows.length*100);
+    html += `<div class="lv-group">
+      <div class="lv-group-hdr">
+        <span class="ico">${g.m.icon}</span>
+        <span>${esc(g.displaySec)}</span>
+        <span style="color:#a0aec0;font-weight:400;margin-left:4px">· ${esc(g.f)}</span>
+        <span class="badge">${done}/${g.rows.length} · ${pct}%</span>
+      </div>`;
+
+    // Räume innerhalb der Gruppe als Unterabschnitte
+    const byRoom = new Map();
+    for (const row of g.rows) {
+      if (!byRoom.has(row.r)) byRoom.set(row.r, []);
+      byRoom.get(row.r).push(row);
+    }
+
+    for (const [room, rrows] of byRoom) {
+      const rdone = rrows.filter(r=>r.chk).length;
+      html += `<div class="lv-count">📍 ${esc(room)} <span style="color:#a0aec0">(${rdone}/${rrows.length})</span></div>`;
+      for (const row of rrows) {
+        const chkCls = row.chk ? 'checked' : '';
+        const rowCls = row.chk ? 'done-row' : '';
+        const u = row.chk ? userById(checks[row.k]?.by||'') : null;
+        const aU = userById(row.ass);
+        const prioCls = (row.priority||'').toLowerCase();
+        const prioHtml = row.priority && row.priority !== 'Mittel'
+          ? `<span class="lv-prio ${prioCls}">${esc(row.priority)}</span>` : '';
+        const whoHtml = u ? `<span class="lv-who" style="background:${u.color}" title="${esc(u.name)}">${u.initials}</span>` : '';
+        const assHtml = aU ? `<span class="lv-who" style="background:${aU.color};opacity:.6" title="Zugewiesen: ${esc(aU.name)}">${aU.initials}</span>` : '';
+        const eS = v => JSON.stringify(v).replace(/"/g,'&quot;');
+        html += `<div class="lv-row ${rowCls}" onclick="openDetail(${eS(row.s)},${eS(row.f)},${eS(row.r)},${eS(row.t)})">
+          <div class="lv-chk ${chkCls}" onclick="event.stopPropagation();toggle(${eS(row.s)},${eS(row.f)},${eS(row.r)},${eS(row.t)})">${row.chk?'✓':''}</div>
+          <div class="lv-body">
+            <div class="lv-task">${esc(row.t)}</div>
+            <div class="lv-meta">${prioHtml}${whoHtml}${assHtml}</div>
+          </div>
+        </div>`;
+      }
+    }
+    html += '</div>';
+  }
+
+  const total = rows.length, done2 = rows.filter(r=>r.chk).length;
+  html = `<div class="lv-count" style="margin-bottom:12px;font-size:.76rem;color:#718096">
+    ${total} Aufgaben · ${done2} erledigt · ${total-done2} offen</div>` + html;
+
   document.getElementById('content').innerHTML = html;
   globalProgress();
 }
