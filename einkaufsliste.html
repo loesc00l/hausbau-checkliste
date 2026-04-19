@@ -230,6 +230,57 @@ header h1{font-size:1.25rem;font-weight:700}
 .km-skip{background:#f0f4f8;color:#4a5568;border:1px solid #e2e8f0!important}
 .km-skip:hover{background:#e2e8f0}
 
+/* ── Teilkauf ────────────────────────────────────────────────────── */
+.tk-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;
+  border-radius:6px;border:1.5px solid #fbd38d;background:#fffaf0;color:#c05621;
+  font-size:.72rem;font-weight:700;cursor:pointer;transition:all .15s;flex-shrink:0;
+  white-space:nowrap;font-family:inherit}
+.tk-btn:hover{background:#c05621;color:#fff;border-color:#c05621}
+.tk-progress-wrap{margin:6px 14px 4px}
+.tk-progress-bar{height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden;margin-bottom:3px}
+.tk-progress-fill{height:100%;background:#48bb78;border-radius:3px;transition:width .4s}
+.tk-progress-fill.warn{background:#ed8936}
+.tk-progress-fill.low{background:#fc8181}
+.tk-progress-text{font-size:.63rem;color:#718096;display:flex;justify-content:space-between}
+.tk-history{margin:4px 14px 6px;padding:7px 10px;background:#fffaf0;border-radius:6px;
+  border:1px solid #feebc8}
+.tk-history-title{font-size:.63rem;font-weight:700;color:#c05621;margin-bottom:4px;
+  display:flex;align-items:center;gap:3px}
+.tk-entry{display:flex;justify-content:space-between;align-items:center;
+  font-size:.67rem;padding:2px 0;border-bottom:1px solid #feebc8}
+.tk-entry:last-child{border-bottom:none}
+.tk-entry-info{color:#744210}
+.tk-entry-amt{font-weight:700;color:#c05621}
+.tk-del{cursor:pointer;color:#e53e3e;font-size:.65rem;padding:0 4px;
+  background:none;border:none;opacity:.45;transition:opacity .15s;font-family:inherit}
+.tk-del:hover{opacity:1}
+.tag-teilk{background:#fefcbf;color:#744210}
+/* Teilkauf-Modal */
+.tkm-modal{background:#fff;border-radius:16px;width:380px;max-width:94vw;
+  box-shadow:0 24px 60px rgba(0,0,0,.25);overflow:hidden}
+.tkm-title{background:#744210;color:#fff;padding:14px 20px;font-size:.95rem;font-weight:700}
+.tkm-art{padding:9px 20px 6px;font-size:.82rem;font-weight:600;color:#2d3748;
+  background:#fffaf0;border-bottom:1px solid #feebc8}
+.tkm-err{padding:5px 20px;color:#c53030;font-size:.73rem;display:none}
+.tkm-form{padding:14px 20px;display:flex;flex-direction:column;gap:11px}
+.tkm-row{display:flex;gap:10px}
+.tkm-field{flex:1;display:flex;flex-direction:column;gap:3px}
+.tkm-field label{font-size:.7rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.6px;color:#94a3b8}
+.tkm-field input{padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:7px;
+  font-size:.85rem;color:#2d3748;outline:none;font-family:inherit;transition:border-color .15s}
+.tkm-field input:focus{border-color:#ed8936}
+.tkm-preview{font-size:.7rem;color:#718096;min-height:16px}
+.tkm-btns{padding:10px 20px 16px;display:flex;justify-content:flex-end;gap:10px;
+  border-top:1px solid #f0f4f8}
+.tkm-btns button{padding:8px 18px;border-radius:7px;border:1.5px solid #e2e8f0;
+  background:#f7fafc;color:#4a5568;font-size:.8rem;font-weight:600;cursor:pointer;
+  font-family:inherit;transition:all .15s}
+.tkm-btns button:hover{border-color:#a0aec0}
+.tkm-save{background:#744210!important;color:#fff!important;border-color:#744210!important}
+.tkm-save:hover{background:#5c3209!important}
+.tkm-save:disabled{opacity:.5;cursor:not-allowed!important}
+
 </style>
 </head>
 <body>
@@ -304,6 +355,42 @@ ALTER PUBLICATION supabase_realtime ADD TABLE hausbau_einkauf_checks;</div>
 
 <div class="sync-badge" id="syncBadge">⟳ Synchronisiere…</div>
 
+<!-- ── Teilkauf-Modal ─────────────────────────────────────────────── -->
+<div class="modal-bg hidden" id="tkModal" onclick="if(event.target===this)closeTkModal()">
+  <div class="tkm-modal">
+    <div class="tkm-title">✂️ Teilkauf eintragen</div>
+    <div id="tkmArtName" class="tkm-art"></div>
+    <div id="tkmErr" class="tkm-err"></div>
+    <div class="tkm-form">
+      <div class="tkm-row">
+        <div class="tkm-field">
+          <label>Datum</label>
+          <input type="date" id="tkmDatum">
+        </div>
+      </div>
+      <div class="tkm-row">
+        <div class="tkm-field">
+          <label id="tkmMengeLabel">Menge</label>
+          <input type="number" id="tkmMenge" min="0.001" step="0.001" placeholder="z.B. 5">
+        </div>
+        <div class="tkm-field">
+          <label>Preis / Einheit (€)</label>
+          <input type="number" id="tkmPreis" min="0" step="0.01" placeholder="z.B. 12.50">
+        </div>
+      </div>
+      <div class="tkm-preview" id="tkmPreview"></div>
+      <div class="tkm-field">
+        <label>Notiz (optional)</label>
+        <input type="text" id="tkmNotiz" placeholder="z.B. OBI Filiale München">
+      </div>
+    </div>
+    <div class="tkm-btns">
+      <button onclick="closeTkModal()">Abbrechen</button>
+      <button class="tkm-save" id="tkmSaveBtn" onclick="saveTeilkauf()">💾 Speichern</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg hidden" id="userModal">
   <div class="modal">
     <h2>👤 Wer bist du?</h2>
@@ -353,7 +440,9 @@ const GEWERK_ICONS = {
 const sb = window._sb || supabase.createClient(SB_URL, SB_KEY);
 
 // ── State ─────────────────────────────────────────────────────────────────
-let checks   = {};   // item_key -> {gekauft, verbaut, checked_by}
+let checks     = {};   // item_key -> {gekauft, verbaut, checked_by}
+let TEILKAEUFE = {};   // item_key -> [{id, datum, menge, preis_einzel, gesamt, notiz}]
+let _tkArtikel = null; // Artikel-Objekt für aktuelles Teilkauf-Modal
 let me       = null;
 let flt      = 'all';
 let srch     = '';
@@ -429,12 +518,25 @@ function flash() {
         console.log('[DB] Benutzer:', USERS.length);
       } catch(e) { console.warn('loadBenutzerVonDB:', e); }
     }
+async function loadTeilkaeufeFromDB() {
+  try {
+    const {data, error} = await sb.from('hausbau_teilkaeufe').select('*').order('datum').order('id');
+    if (error) { console.warn('hausbau_teilkaeufe:', error.message); return; }
+    TEILKAEUFE = {};
+    (data || []).forEach(t => {
+      if (!TEILKAEUFE[t.item_key]) TEILKAEUFE[t.item_key] = [];
+      TEILKAEUFE[t.item_key].push(t);
+    });
+  } catch(e) { console.warn('loadTeilkaeufe:', e); }
+}
+
 async function loadAll() {
   // Schritt 0: Artikel-Katalog + Benutzer aus DB laden
   await Promise.all([loadArtikelVonDB(sb), loadBenutzerVonDB(sb)]);
   rebuildUI(); // Sofort mit DB-Daten rendern
 
-  // Schritt 1: Einkauf-Status laden
+  // Schritt 1: Einkauf-Status + Teilkäufe laden
+  await loadTeilkaeufeFromDB();
   const {data, error} = await sb.from('hausbau_einkauf_checks').select('*');
   if (error) {
     if (error.code === '42P01') {
@@ -593,10 +695,11 @@ function onSearch(v) { srch = v.toLowerCase(); rebuildUI(); }
 // ── Stats ──────────────────────────────────────────────────────────────────
 function buildStats() {
   const items = EINKAUF_DATA;
-  let totalGesamt=0, countGekauft=0, countVerbaut=0, totalLocs=0, verbautLocs=0;
+  let totalGesamt=0, countGekauft=0, countVerbaut=0, totalLocs=0, verbautLocs=0, totalBezahlt=0;
   items.forEach(i => {
     totalGesamt += effGesamt(i);
-    if (checks[kaufKey(i.artikel)]?.gekauft) countGekauft++;
+    totalBezahlt += tkBezahlt(i);
+    if (checks[kaufKey(i.artikel)]?.gekauft || tkVollGekauft(i)) countGekauft++;
     totalLocs += i.locations.length;
     i.locations.forEach(l => {
       if (checks[verbKey(i.artikel,l.ort)]?.verbaut) { countVerbaut++; verbautLocs++; }
@@ -605,11 +708,14 @@ function buildStats() {
   const pct = items.length ? Math.round(countGekauft/items.length*100) : 0;
   document.getElementById('progTxt').textContent = countGekauft + ' / ' + items.length + ' gekauft';
   document.getElementById('progFill').style.width = pct + '%';
+  const bezahltStr = totalBezahlt > 0
+    ? `<div class="stat-card"><div class="stat-num" style="color:#c05621">${totalBezahlt.toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:0})} €</div><div class="stat-lbl">✂️ Teilkäufe bezahlt</div></div>` : '';
   document.getElementById('statsRow').innerHTML = `
     <div class="stat-card"><div class="stat-num">${items.length}</div><div class="stat-lbl">Artikel gesamt</div></div>
     <div class="stat-card"><div class="stat-num" style="color:#38a169">${countGekauft}</div><div class="stat-lbl">Gekauft</div></div>
     <div class="stat-card"><div class="stat-num" style="color:#3182ce">${verbautLocs} / ${totalLocs}</div><div class="stat-lbl">Positionen verbaut</div></div>
     <div class="stat-card"><div class="stat-num" style="color:#744210">${totalGesamt.toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:0})} €</div><div class="stat-lbl">Gesamtbudget</div></div>
+    ${bezahltStr}
   `;
 }
 
@@ -621,8 +727,8 @@ function rebuildUI() {
   const items = EINKAUF_DATA.filter(i => {
     if (srch && !i.artikel.toLowerCase().includes(srch) && !i.beschreibung.toLowerCase().includes(srch)) return false;
     if (activeGw && i.gewerk !== activeGw) return false;
-    if (flt === 'offen') return !checks[kaufKey(i.artikel)]?.gekauft;
-    if (flt === 'gekauft') return !!checks[kaufKey(i.artikel)]?.gekauft;
+    if (flt === 'offen') return !checks[kaufKey(i.artikel)]?.gekauft && !tkVollGekauft(i);
+    if (flt === 'gekauft') return !!checks[kaufKey(i.artikel)]?.gekauft || tkVollGekauft(i);
     if (flt === 'verbaut') {
       return i.locations.length > 0 && i.locations.every(l => checks[verbKey(i.artikel,l.ort)]?.verbaut);
     }
@@ -675,10 +781,22 @@ function buildArtikelCard(item) {
   const verbautCount = item.locations.filter(l => checks[verbKey(item.artikel,l.ort)]?.verbaut).length;
   const allVerbaut = item.locations.length > 0 && verbautCount === item.locations.length;
 
+  // Teilkauf-Daten
+  const tks = TEILKAEUFE[tkKey(item.artikel)] || [];
+  const mengeG = effMenge(item);
+  const mengeD = tkMengeGekauft(item);
+  const mengeR = Math.max(0, mengeG - mengeD);
+  const art    = item.art || 'Stk.';
+  const pct    = mengeG > 0 ? Math.min(100, (mengeD / mengeG) * 100) : 0;
+  const fillCls = pct >= 80 ? '' : pct >= 30 ? ' warn' : ' low';
+  const tkFull = tks.length > 0 && tkVollGekauft(item);
+
   let statusTag;
-  if (allVerbaut) statusTag = '<span class="tag tag-gekauft">✓ Verbaut</span>';
-  else if (isGekauft) statusTag = '<span class="tag tag-part">🔧 Zu verbauen</span>';
-  else statusTag = '<span class="tag tag-offen">Noch kaufen</span>';
+  if (allVerbaut)        statusTag = '<span class="tag tag-gekauft">✓ Verbaut</span>';
+  else if (isGekauft)    statusTag = '<span class="tag tag-part">🔧 Zu verbauen</span>';
+  else if (tkFull)       statusTag = '<span class="tag tag-gekauft">✓ Vollständig</span>';
+  else if (tks.length>0) statusTag = '<span class="tag tag-teilk">✂️ Teilweise</span>';
+  else                   statusTag = '<span class="tag tag-offen">Noch kaufen</span>';
 
   const linkBtn = item.url
     ? `<a class="link-btn" href="${item.url}" target="_blank" rel="noopener">🔗 Link</a>`
@@ -720,6 +838,37 @@ function buildArtikelCard(item) {
     });
   }
 
+  // Fortschrittsbalken (nur wenn Teilkäufe vorhanden)
+  const progressHTML = tks.length > 0 ? `
+    <div class="tk-progress-wrap">
+      <div class="tk-progress-bar"><div class="tk-progress-fill${fillCls}" style="width:${pct.toFixed(1)}%"></div></div>
+      <div class="tk-progress-text">
+        <span>${pct.toFixed(0)}% beschafft</span>
+        <span>${fmtMengeEL(mengeD, art)} von ${fmtMengeEL(mengeG, art)}</span>
+      </div>
+    </div>` : '';
+
+  // Teilkauf-Historie
+  const tkKey_ = tkKey(item.artikel);
+  const histRows = tks.map(t => {
+    const d = t.datum ? new Date(t.datum).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '–';
+    const notiz = t.notiz ? ` · ${t.notiz}` : '';
+    const g = parseFloat(t.gesamt) > 0 ? fmtE(t.gesamt) : (parseFloat(t.preis_einzel)>0 ? fmtE(parseFloat(t.menge)*parseFloat(t.preis_einzel)) : '–');
+    const eid = t.id;
+    return `<div class="tk-entry">
+      <span class="tk-entry-info">${d} · ${fmtMengeEL(t.menge, art)}${notiz}</span>
+      <span style="display:flex;align-items:center;gap:3px">
+        <span class="tk-entry-amt">${g}</span>
+        <button class="tk-del" onclick="deleteTeilkauf(${eid},'${tkKey_.replace(/'/g,"\\'")}',event)" title="Löschen">✕</button>
+      </span>
+    </div>`;
+  }).join('');
+  const histHTML = tks.length > 0 ? `
+    <div class="tk-history">
+      <div class="tk-history-title">✂️ Teilkäufe (${tks.length})</div>
+      ${histRows}
+    </div>` : '';
+
   return `<div class="artikel-card" id="ac_${slug(item.artikel)}">
     <div class="artikel-hdr" onclick="document.getElementById('acb_${slug(item.artikel)}').classList.toggle('hidden')">
       <span class="artikel-name">${item.artikel}</span>
@@ -734,8 +883,11 @@ function buildArtikelCard(item) {
     </div>
     <div class="artikel-body" id="acb_${slug(item.artikel)}">
       ${item.beschreibung?`<div class="artikel-desc">${item.beschreibung}</div>`:''}
+      ${progressHTML}
+      ${histHTML}
       <div style="padding:6px 14px 2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <button class="kauf-btn${isGekauft?' on':''}" onclick="toggleGekauft('${esc(item.artikel)}')">${isGekauft?'✓ Gekauft':'🛒 Als gekauft markieren'}</button>
+        <button class="tk-btn" onclick="openTkModal('${esc(item.artikel)}');event.stopPropagation()">✂️ Teilkauf</button>
         <button class="todo-add-btn" onclick="addTodo('${esc(item.artikel)}','${esc(item.gewerk)}',this)">+ Checkliste</button>
       </div>
       ${locs?`<div class="loc-section">${locs}</div>`:''}
@@ -768,7 +920,7 @@ function setGw(gw) {
 
 // ── Todo-Bereich ───────────────────────────────────────────────────────────
 function buildTodosSection() {
-  const items = EINKAUF_DATA.filter(i => !checks[kaufKey(i.artikel)]?.gekauft);
+  const items = EINKAUF_DATA.filter(i => !checks[kaufKey(i.artikel)]?.gekauft && !tkVollGekauft(i));
   if (!items.length) { document.getElementById('todosSection').innerHTML = ''; return; }
   const escT = s => s.replace(/'/g,"\'").replace(/"/g,'&quot;');
   let html = `<div class="todo-section">
@@ -782,6 +934,96 @@ function buildTodosSection() {
   if (items.length > 15) html += `<div style="padding:8px 16px;font-size:.75rem;color:#a0aec0">… und ${items.length-15} weitere Artikel</div>`;
   html += '</div>';
   document.getElementById('todosSection').innerHTML = html;
+}
+
+// ── Teilkauf Hilfsfunktionen ───────────────────────────────────────────────
+function tkKey(artikel) { return 'k:' + artikel; }
+function tkMengeGekauft(item) {
+  return (TEILKAEUFE[tkKey(item.artikel)] || []).reduce((s,t) => s + (parseFloat(t.menge)||0), 0);
+}
+function tkMengeOffen(item) {
+  return Math.max(0, effMenge(item) - tkMengeGekauft(item));
+}
+function tkVollGekauft(item) { return tkMengeOffen(item) <= 0.0001; }
+function tkBezahlt(item) {
+  return (TEILKAEUFE[tkKey(item.artikel)] || []).reduce((s,t) => s + (parseFloat(t.gesamt)||0), 0);
+}
+function fmtMengeEL(val, art) {
+  const n = Number(val||0);
+  const s = n === Math.floor(n) ? n.toString() : n.toFixed(3).replace(/\.?0+$/,'');
+  return `${s} ${art||'Stk.'}`;
+}
+
+// ── Teilkauf Modal ─────────────────────────────────────────────────────────
+function openTkModal(artikelName) {
+  _tkArtikel = EINKAUF_DATA.find(a => a.artikel === artikelName) || null;
+  if (!_tkArtikel) return;
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('tkmArtName').textContent = artikelName;
+  document.getElementById('tkmMengeLabel').textContent =
+    `Menge (${_tkArtikel.art || 'Stk.'}) — noch offen: ${fmtMengeEL(tkMengeOffen(_tkArtikel), _tkArtikel.art)}`;
+  document.getElementById('tkmDatum').value = today;
+  document.getElementById('tkmMenge').value = '';
+  document.getElementById('tkmPreis').value = _tkArtikel.preis > 0 ? _tkArtikel.preis : '';
+  document.getElementById('tkmNotiz').value = '';
+  document.getElementById('tkmErr').style.display = 'none';
+  document.getElementById('tkmSaveBtn').disabled = false;
+  document.getElementById('tkmSaveBtn').textContent = '💾 Speichern';
+  updateTkmPreview();
+  document.getElementById('tkModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('tkmMenge').focus(), 50);
+}
+function closeTkModal() {
+  document.getElementById('tkModal').classList.add('hidden');
+  _tkArtikel = null;
+}
+function updateTkmPreview() {
+  const m = parseFloat(document.getElementById('tkmMenge').value) || 0;
+  const p = parseFloat(document.getElementById('tkmPreis').value) || 0;
+  const el = document.getElementById('tkmPreview');
+  el.textContent = (m > 0 && p > 0) ? `Gesamt: ${fmtE(m * p)}` : '';
+}
+async function saveTeilkauf() {
+  const btn = document.getElementById('tkmSaveBtn');
+  const errDiv = document.getElementById('tkmErr');
+  errDiv.style.display = 'none';
+  if (!_tkArtikel) return;
+  const datum = document.getElementById('tkmDatum').value;
+  const menge = parseFloat(document.getElementById('tkmMenge').value);
+  const preis = parseFloat(document.getElementById('tkmPreis').value) || 0;
+  const notiz = document.getElementById('tkmNotiz').value.trim();
+  if (!datum) { errDiv.textContent = '❌ Bitte Datum angeben.'; errDiv.style.display='block'; return; }
+  if (!menge || menge <= 0) { errDiv.textContent = '❌ Bitte gültige Menge angeben.'; errDiv.style.display='block'; return; }
+  btn.disabled = true; btn.textContent = '⏳ Speichern…';
+  const key = tkKey(_tkArtikel.artikel);
+  const row = {
+    item_key: key, artikel: _tkArtikel.artikel,
+    datum, menge, preis_einzel: preis,
+    gesamt: Math.round(menge * preis * 100) / 100,
+    notiz
+  };
+  try {
+    const {data, error} = await sb.from('hausbau_teilkaeufe').insert(row).select();
+    if (error) throw new Error(error.message);
+    const saved = (data || [])[0] || row;
+    if (!TEILKAEUFE[key]) TEILKAEUFE[key] = [];
+    TEILKAEUFE[key].push(saved);
+    closeTkModal();
+    flash(); rebuildUI();
+  } catch(e) {
+    errDiv.textContent = '❌ ' + e.message; errDiv.style.display='block';
+    btn.disabled = false; btn.textContent = '💾 Speichern';
+  }
+}
+async function deleteTeilkauf(id, key, event) {
+  event.stopPropagation();
+  if (!confirm('Diesen Teilkauf löschen?')) return;
+  try {
+    const {error} = await sb.from('hausbau_teilkaeufe').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    if (TEILKAEUFE[key]) TEILKAEUFE[key] = TEILKAEUFE[key].filter(t => t.id !== id);
+    flash(); rebuildUI();
+  } catch(e) { alert('Fehler beim Löschen: ' + e.message); }
 }
 
 // ── Start ─────────────────────────────────────────────────────────────────
@@ -806,6 +1048,8 @@ function checkAuth() {
 window.addEventListener('DOMContentLoaded', function() {
   initModal();
   checkAuth();
+  document.getElementById('tkmMenge').addEventListener('input', updateTkmPreview);
+  document.getElementById('tkmPreis').addEventListener('input', updateTkmPreview);
 });
 </script>
 </body>
